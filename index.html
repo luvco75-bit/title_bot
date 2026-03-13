@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<!--
+==========================================================
+  ⚙️  관리자 설정 블록 — 여기만 수정하세요
+==========================================================
+  ADMIN_PASSWORD  : 관리자 비밀번호 (무제한 사용)
+  LICENSE_LIMIT   : 1단계 라이선스 허용 수량
+  LICENSE_CODES   : 판매할 라이선스 코드 목록
+                    { code: '코드', limit: 수량 }
+                    limit: 0 이면 무제한
+==========================================================
+-->
+<script id="config">
+var CONFIG = {
+  ADMIN_PASSWORD: '0419',        // ← 관리자 비밀번호 변경
+  LICENSE_CODES: [
+    // 1단계 코드 예시 — 원하는 만큼 추가하세요
+    { code: 'VIRAL-A001', limit: 365 },
+    { code: 'VIRAL-A002', limit: 365 },
+    { code: 'VIRAL-A003', limit: 365 },
+    { code: 'VIRAL-A004', limit: 365 },
+    { code: 'VIRAL-A005', limit: 365 },
+  ]
+};
+</script>
+
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바이럴 제목 생성기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@700&display=swap');
+
+  :root {
+    --bg: #0f0f12;
+    --surface: #1a1a20;
+    --surface2: #22222a;
+    --border: #2e2e3a;
+    --accent: #5b9cf6;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --text: #f0f0f5;
+    --text-dim: #888899;
+    --text-muted: #555566;
+    --tag-bg: #1e1e28;
+  }
+
+  /* ── 라이트 모드 ── */
+  body.light {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface2: #eef0f3;
+    --border: #d0d5dd;
+    --accent: #2563eb;
+    --accent2: #7c3aed;
+    --accent3: #059669;
+    --text: #111827;
+    --text-dim: #4b5563;
+    --text-muted: #9ca3af;
+    --tag-bg: #f0f2f5;
+  }
+
+  /* 테마 토글 버튼 */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 999;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  header p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── 입력 패널 ── */
+  .input-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .kw-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .kw-input:focus { border-color: var(--accent); }
+  .kw-input::placeholder { color: var(--text-muted); }
+
+  .btn-gen {
+    background: linear-gradient(135deg, var(--accent), #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-gen:hover { opacity: 0.88; }
+  .btn-gen:active { transform: scale(0.97); }
+
+  /* ── 패턴 선택 ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #9ba8c0;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .pattern-btn {
+    background: var(--tag-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: #9ba8c0;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    line-height: 1.4;
+  }
+  .pattern-btn.active {
+    border-color: var(--accent);
+    color: var(--text);
+    background: rgba(91,156,246,0.08);
+  }
+  .pattern-btn:hover:not(.active) {
+    border-color: #555;
+    color: #c8d0e0;
+  }
+  .pattern-btn .p-name {
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 2px;
+    color: #b8c4d8;
+  }
+  .pattern-btn.active .p-name { color: var(--accent); }
+  .pattern-btn .p-desc {
+    font-size: 10px;
+    color: #606878;
+    line-height: 1.3;
+  }
+  .pattern-btn.active .p-desc { color: #7a8898; }
+  .pattern-btn:hover:not(.active) .p-desc { color: #6e7888; }
+
+  /* ── 수량 ── */
+  .count-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .count-row span { font-size: 13px; color: #9ba8c0; }
+  .count-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* 번호 스타일 선택 */
+  .prefix-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .prefix-chip {
+    background: var(--tag-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    color: #c8d4e8;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .prefix-chip.active {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(6,214,160,0.08);
+  }
+
+  /* ── 결과 ── */
+  .results-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: fadeUp 0.25s ease both;
+    position: relative;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 24px;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-body { flex: 1; }
+
+  .card-title {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 6px;
+    word-break: keep-all;
+  }
+
+  .card-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .meta-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+  .meta-pattern { background: rgba(167,139,250,0.15); color: var(--accent2); }
+  .meta-used { background: rgba(91,156,246,0.12); color: var(--accent); font-size: 10px; }
+
+  .btn-copy {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-copy:hover { border-color: var(--accent3); color: var(--accent3); }
+  .btn-copy.copied { border-color: var(--accent3); color: var(--accent3); }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .result-count { font-size: 12px; color: var(--text-muted); }
+  .btn-clear {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .btn-clear:hover { color: var(--accent); }
+
+  /* 패턴 ALL 토글 */
+  .select-all-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+  }
+  .btn-toggle-all {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: var(--accent2);
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    padding: 2px 0;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.15s;
+  }
+  .btn-toggle-all:hover { text-decoration-color: var(--accent2); }
+
+  /* ── 모드 탭 ── */
+  .mode-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .mode-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+  }
+  .mode-tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ── 대량 모드 ── */
+  .bulk-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    outline: none;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  .bulk-textarea:focus { border-color: var(--accent); }
+  .bulk-textarea::placeholder { color: var(--text-muted); }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(91,156,246,0.04); }
+  .upload-zone.dragover { border-color: var(--accent); background: rgba(91,156,246,0.08); }
+  .upload-zone input { display: none; }
+
+  .bulk-options {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .bulk-options label { font-size: 13px; color: var(--text-dim); }
+  .bulk-options input[type=number] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    width: 70px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    outline: none;
+  }
+
+  .kw-preview {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
+  .kw-preview span { color: var(--accent2); font-weight: 700; }
+
+  .bulk-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-bulk-gen {
+    flex: 1;
+    background: linear-gradient(135deg, var(--accent), #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-bulk-gen:hover { opacity: 0.88; }
+  .btn-dl {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--accent3);
+    cursor: pointer;
+    font-weight: 700;
+    transition: border-color 0.15s;
+    white-space: nowrap;
+  }
+  .btn-dl:hover { border-color: var(--accent3); }
+  .btn-dl:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 10px;
+    display: none;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  .btn-copy-all {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-copy-all:hover { border-color: var(--accent3); color: var(--accent3); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+
+
+<!-- 구매 안내 팝업 -->
+<div id="purchaseModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:none;align-items:center;justify-content:center;font-family:'Noto Sans KR',sans-serif;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;max-width:480px;width:92%;max-height:90vh;overflow-y:auto;">
+
+    <!-- 제목 -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:28px;margin-bottom:8px;">🔓</div>
+      <div style="font-size:18px;font-weight:900;color:var(--text);">무료 체험이 끝났습니다</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">라이선스를 구매하고 계속 사용하세요</div>
+    </div>
+
+    <!-- 가격표 -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+
+      <div id="plan-normal" style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s;" onclick="selectPlan('normal')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(selectedPlan!=='normal')this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);">📝 일반 모드</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">제목 365개 생성</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent);">30,000원</div>
+        </div>
+      </div>
+
+      <div id="plan-bulk" style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s;" onclick="selectPlan('bulk')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(selectedPlan!=='bulk')this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);">🚀 대량 모드</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">제목 1,000개 생성</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent);">80,000원</div>
+        </div>
+      </div>
+
+      <div id="plan-rewrite" style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s;" onclick="selectPlan('rewrite')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(selectedPlan!=='rewrite')this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);">🔄 제목 변환</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">제목 365개 변환</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent);">30,000원</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 구분선 -->
+    <div style="border-top:1px solid var(--border);margin-bottom:20px;"></div>
+
+    <!-- 라이선스 코드 입력 -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">구매 후 라이선스 코드 입력</div>
+    <input id="licenseInput" type="text"
+      placeholder="예) VIRAL-A001"
+      style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:11px 14px;font-size:14px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none;text-align:center;letter-spacing:2px;box-sizing:border-box;margin-bottom:8px;"
+      onkeydown="if(event.key==='Enter')activateLicense()"
+    >
+    <div id="licenseError" style="font-size:12px;color:#f87171;min-height:16px;margin-bottom:10px;"></div>
+    <button onclick="activateLicense()" style="width:100%;background:linear-gradient(135deg,var(--accent),#2563eb);border:none;border-radius:8px;padding:13px;color:#fff;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-bottom:10px;">
+      🔓 코드 입력하고 시작하기
+    </button>
+
+    <!-- 관리자 -->
+    <div style="text-align:center;">
+      <span style="font-size:11px;color:var(--text-muted);cursor:pointer;text-decoration:underline;" onclick="showAdminInput()">관리자 입장</span>
+    </div>
+    <div id="adminInputWrap" style="display:none;margin-top:10px;">
+      <input id="adminPwInput" type="password" placeholder="관리자 비밀번호"
+        style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none;box-sizing:border-box;"
+        onkeydown="if(event.key==='Enter')activateAdmin()"
+      >
+      <button onclick="activateAdmin()" style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text-muted);font-size:13px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;">
+        입장
+      </button>
+    </div>
+
+    <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:16px;line-height:1.7;">
+      구매 문의: <span style="color:var(--accent);">doodrim00@naver.com</span>
+    </div>
+  </div>
+</div>
+
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 다크</button>
+
+<header>
+  <h1>🔥 바이럴 제목 생성기</h1>
+  <p>유튜브·블로그 클릭률 높이는 자극형 제목 자동 생성</p>
+  <div id="usageBadge" style="
+    font-size:12px;color:var(--text-muted);margin-top:8px;
+    font-family:'Noto Sans KR',sans-serif;
+  "></div>
+</header>
+
+<!-- 모드 탭 -->
+<div class="mode-tabs">
+  <button class="mode-tab active" id="tabNormal" onclick="switchMode('normal')">일반 모드</button>
+  <button class="mode-tab" id="tabBulk" onclick="switchMode('bulk')">대량 모드</button>
+  <button class="mode-tab" id="tabRewrite" onclick="switchMode('rewrite')">제목 변환</button>
+</div>
+
+<div class="input-panel" id="panelNormal">
+  <!-- 키워드 입력 -->
+  <div class="section-label" style="color:#c8d4e8;">주제 선택</div>
+  <div class="prefix-row" id="topicRow" style="margin-bottom:16px;">
+    <div class="prefix-chip active" data-topic="health">🏥 건강</div>
+    <div class="prefix-chip" data-topic="tech">💻 재테크/IT</div>
+    <div class="prefix-chip" data-topic="lifestyle">✨ 라이프스타일</div>
+    <div class="prefix-chip" data-topic="relationship">💬 심리/인간관계</div>
+    <div class="prefix-chip" data-topic="recipe">🍳 요리/식품</div>
+    <div class="prefix-chip" data-topic="free">✏️ 자유입력</div>
+  </div>
+  <div id="freeTopicWrap" style="display:none;margin-bottom:12px;">
+    <input id="freeTopicInput" class="kw-input" placeholder="주제를 직접 입력하세요 (예: 육아, 여행, 부동산...)" style="width:100%;">
+  </div>
+
+  <div class="section-label" style="color:#c8d4e8;">키워드 입력 (쉼표로 구분, 최대 5개)</div>
+  <div class="input-row">
+    <input class="kw-input" id="kwInput" placeholder="예: 고지혈증, 공복혈당, 뇌졸중 전조증상" />
+    <button class="btn-gen" onclick="generate()">생성</button>
+  </div>
+
+  <!-- 번호 스타일 -->
+  <div class="section-label" style="color:#c8d4e8;">번호 스타일</div>
+  <div class="prefix-row" id="prefixRow">
+    <div class="prefix-chip active" data-v="circle">① ② ③</div>
+    <div class="prefix-chip" data-v="paren">㉑ ㉒ ㉓</div>
+    <div class="prefix-chip" data-v="dot">1. 2. 3.</div>
+    <div class="prefix-chip" data-v="none">없음</div>
+  </div>
+
+  <!-- 패턴 선택 -->
+  <div class="section-label" style="margin-bottom:6px;">생성 패턴
+    <span style="font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:400;margin-left:6px;">(복수 선택 가능)</span>
+  </div>
+  <div class="select-all-row">
+    <button class="btn-toggle-all" onclick="toggleAll()">전체 선택/해제</button>
+  </div>
+  <div class="pattern-grid" id="patternGrid"></div>
+
+  <!-- 생성 수량 -->
+  <div class="count-row">
+    <span>생성 수량</span>
+    <select class="count-select" id="countSel">
+      <option value="10">10개</option>
+      <option value="20">20개</option>
+      <option value="30" selected>30개</option>
+      <option value="50">50개</option>
+      <option value="60">60개</option>
+    </select>
+  </div>
+</div>
+
+<!-- 대량 모드 패널 -->
+<div class="input-panel" id="panelBulk" style="display:none;">
+  <div class="section-label">키워드 붙여넣기 (줄바꿈으로 구분)</div>
+  <textarea class="bulk-textarea" id="bulkText" placeholder="고혈압&#10;당뇨&#10;고지혈증&#10;뇌졸중&#10;대상포진&#10;...&#10;&#10;한 줄에 키워드 하나씩, 수백 개도 OK"></textarea>
+
+  <div class="section-label">또는 엑셀/CSV 업로드 (A열에 키워드)</div>
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+    📂 파일을 여기에 드래그하거나 클릭해서 업로드<br>
+    <span style="font-size:10px;margin-top:4px;display:block;">.xlsx / .xls / .csv 지원</span>
+  </div>
+
+  <div class="kw-preview" id="kwPreview">키워드를 입력하면 미리보기가 표시됩니다</div>
+
+  <div class="bulk-options">
+    <label>키워드당 제목 수</label>
+    <input type="number" id="perKwInput" value="5" min="1" max="30" />
+    <label>번호</label>
+    <select class="count-select" id="bulkPrefixSel">
+      <option value="circle">① ② ③</option>
+      <option value="dot">1. 2. 3.</option>
+      <option value="none">없음</option>
+    </select>
+  </div>
+
+  <div class="bulk-actions">
+    <button class="btn-bulk-gen" onclick="generateBulk()">🚀 대량 생성</button>
+    <button class="btn-dl" id="btnDl" disabled onclick="downloadXlsx()">⬇ 엑셀 다운</button>
+  </div>
+  <div class="progress-bar-wrap" id="progressWrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+</div>
+
+<!-- 제목 변환 패널 -->
+<div class="input-panel" id="panelRewrite" style="display:none;">
+  <div class="section-label" style="color:#c8d4e8;">변환할 제목 붙여넣기 (줄바꿈으로 구분)</div>
+  <textarea class="bulk-textarea" id="rewriteInput" placeholder="고지혈증 관리? '이런 걸' 피해야 수치가 안정됩니다!&#10;고지혈증 수치 급상승할 때 몸에서 '이런 증상' 나타납니다.&#10;...&#10;&#10;핵심 키워드를 유지하면서 비슷한 뉘앙스로 변환합니다." rows="8"></textarea>
+
+  <div style="display:flex;align-items:center;gap:10px;margin:10px 0 16px;">
+    <div style="font-size:12px;color:#9ba8c0;" id="rewriteCount">0개 제목 입력됨</div>
+    <div style="flex:1;"></div>
+    <button class="btn-gen" id="btnRewrite" onclick="startRewrite()" style="width:auto;padding:10px 24px;">🔄 변환 시작</button>
+    <button class="btn-gen" id="btnRewriteStop" onclick="stopRewrite()" style="width:auto;padding:10px 18px;background:linear-gradient(135deg,#475569,#334155);display:none;">⏹ 중단</button>
+  </div>
+
+  <div class="progress-bar-wrap" id="rewriteProgressWrap" style="display:none;">
+    <div class="progress-bar" id="rewriteProgressBar" style="width:0%;"></div>
+  </div>
+  <div style="font-size:12px;color:#9ba8c0;margin:6px 0 12px;" id="rewriteStatus"></div>
+
+  <!-- 결과 테이블 -->
+  <div id="rewriteResultArea" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="font-size:13px;color:#c8d4e8;font-weight:700;" id="rewriteResultCount"></div>
+      <div style="flex:1;"></div>
+      <button onclick="addResultsToDB()" style="background:none;border:1px solid var(--accent3);border-radius:6px;padding:7px 14px;color:var(--accent3);font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;" id="btnAddToDB">✚ 사용 이력에 등록</button>
+      <button onclick="downloadRewriteXlsx()" style="background:var(--accent);border:none;border-radius:6px;padding:7px 16px;color:#fff;font-size:12px;font-family:'Noto Sans KR',sans-serif;font-weight:700;cursor:pointer;">⬇ 엑셀 다운</button>
+      <button onclick="copyAllRewrite()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:7px 14px;color:#9ba8c0;font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;" id="btnCopyAll">전체 복사</button>
+    </div>
+    <div id="rewriteTable"></div>
+  </div>
+
+  <!-- 사용 이력 DB -->
+  <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div class="section-label" style="color:#c8d4e8;margin-bottom:0;">📋 사용 이력 DB</div>
+      <div style="font-size:12px;color:#9ba8c0;" id="dbCount">0개 저장됨</div>
+      <div style="flex:1;"></div>
+      <button onclick="importDBFile()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:#9ba8c0;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;">📂 파일 불러오기 (엑셀·txt)</button>
+      <input type="file" id="dbFileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none;" onchange="handleDBFile(event)">
+      <button onclick="exportDB()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:#9ba8c0;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;">⬇ 엑셀 내보내기</button>
+      <button onclick="clearDB()" style="background:none;border:1px solid #554444;border-radius:6px;padding:5px 12px;color:#886666;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;">🗑 전체 삭제</button>
+    </div>
+    <div style="font-size:11px;color:#606878;line-height:1.6;">
+      변환 완료 후 <strong style="color:#9ba8c0;">✚ 사용 이력에 등록</strong>을 누르거나, 기존 제목 목록을 엑셀로 불러오세요.<br>
+      이후 변환 시 완전히 같은 제목이 있으면 <span style="background:#7c3f00;color:#f5a623;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;">중복</span> 표시됩니다.
+    </div>
+  </div>
+</div>
+
+<!-- 결과 -->
+<div id="resultArea">
+  <div class="empty-state">
+    <div class="icon">✏️</div>
+    키워드를 입력하고<br>생성 버튼을 눌러보세요
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// 유틸
+// ═══════════════════════════════════════════════════════
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function rn(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+// 원문자 (①~㊿)
+var CIRCLE1 = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+var CIRCLE2 = ['㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚','㉛','㉜','㉝','㉞','㉟','㊱','㊲','㊳','㊴','㊵','㊶','㊷','㊸','㊹','㊺','㊻','㊼','㊽','㊾','㊿'];
+var ALL_CIRCLES = CIRCLE1.concat(CIRCLE2);
+
+var _circleIdx = Math.floor(Math.random() * ALL_CIRCLES.length);
+var _parenIdx  = Math.floor(Math.random() * 50) + 1;
+var _dotIdx    = Math.floor(Math.random() * 99) + 1;
+
+function nextPrefix(style) {
+  if (style === 'circle') {
+    var v = ALL_CIRCLES[_circleIdx % ALL_CIRCLES.length]; _circleIdx++; return v + ' ';
+  }
+  if (style === 'paren') {
+    var n = _parenIdx++; return n + '. ';
+  }
+  if (style === 'dot') {
+    var n = _dotIdx++; return n + '. ';
+  }
+  return '';
+}
+
+// ═══════════════════════════════════════════════════════
+// 키워드 타입 자동 감지
+// 4가지 타입: disease / food / medical / general
+// ── 우선순위 ──
+//   1. medical 정확 매칭
+//   2. 복합 키워드 후처리 (좋은음식/약/수치 등)
+//   3. disease / food 점수
+//   4. 끝 글자 휴리스틱
+
+// [1순위] medical 정확 매칭
+var MEDICAL_EXACT = [
+  '산정특례','실손보험','실비보험','보험청구','보험료청구','보험료','보험금','보험적용','의료비','입원비',
+  '수술비','진료비','치료비','약값','검사비','비급여','급여항목','본인부담금',
+  '항암치료','방사선치료','면역치료','호르몬치료','표적치료','항암제',
+  '항암부작용','수술후','수술전','수술방법','수술회복','재활치료','도수치료','물리치료',
+  '주사치료','스테로이드주사','히알루론산주사','신경차단술','프롤로',
+  'mri','ct','엑스레이','초음파검사','내시경','조영제','생검','조직검사',
+  '입원','퇴원','병원선택','2차소견','전원','건강검진','종합검진','암검진',
+  '임플란트','라식','라섹','교정치료','발치','충치치료','치과치료',
+  '요양병원','요양원','요양시설','재활병원',
+];
+
+// [2순위] disease
+var DISEASE_WORDS = [
+  // 암·종양
+  '암','종양','백혈병','림프종','육종','전이',
+  // 대사·심혈관
+  '고혈압','당뇨','지방간','고지혈증','통풍','동맥경화','협심증','심근경색','부정맥','심부전',
+  '뇌졸중','뇌경색','뇌출혈','뇌혈관',
+  // 호흡기·소화기
+  '천식','비염','역류성식도염','크론병','궤양성대장염','과민성대장','간경변','간염','위염','장염',
+  // 근골격
+  '디스크','협착증','관절염','골다공증','척추','오십견','건염','근막통',
+  // 눈·귀·피부
+  '백내장','녹내장','황반변성','망막','이명','어지럼증','난청','아토피','건선','백반','탈모',
+  // 신경·정신
+  '치매','파킨슨','공황장애','우울증','불안장애','조현병','불면증','수면무호흡','조울증','adhd',
+  // 신장·비뇨
+  '신부전','신장병','단백뇨','혈뇨','요로결석','전립선',
+  // 내분비
+  '갑상선','쿠싱','애디슨',
+  // 감염·면류
+  '패혈증','대상포진','류마티스','루푸스',
+  // 증상·상태
+  '초기증상','전조증상','후유증','합병증','재발','만성질환',
+  // 기타 증상명
+  '다래끼','구순염','눈밑떨림','이석증','메니에르','한포진','봉와직염',
+];
+
+// [3순위] food
+var FOOD_WORDS = [
+  // 영양제·건기식 일반
+  '영양제','비타민','미네랄','오메가3','유산균','프로바이오틱','콜라겐','효소','효모',
+  '홍삼','인삼','녹용','침향','스피루리나','클로렐라',
+  // 식재료·음식
+  '마늘','생강','강황','시나몬','올리브오일','코코넛오일','아마씨','귀리','보리','잡곡','현미',
+  '양파','비트','당근','시금치','케일','고구마','버섯','두부','낫또','청국장','된장','김치',
+  '계란','바나나','사과','블루베리','아보카도','양배추','브로콜리',
+  '견과류','호두','아몬드','캐슈넛','피스타치오','땅콩',
+  '딸기','토마토','포도','석류','레몬','키위','망고',
+  '고로쇠','오미자','구기자','헛개','쑥','돌나물',
+  // 성분·성분명
+  '아연','마그네슘','칼슘','철분','루테인','아스타잔틴','코엔자임q10',
+  '글루타치온','레스베라트롤','퀘르세틴','베타글루칸','폴리페놀','플라보노이드',
+  'nac','nad','nmn','라이코펜','제아잔틴','커큐민','베르베린','알리신',
+  // 제형·행위
+  '단백질보충제','프로틴','식이섬유','프리바이오틱스',
+  '차','주스','스무디','보충제','캡슐','분말','추출물','농축액','오일',
+  // 행위·문구
+  '먹는법','복용법','섭취법','효능','부작용','먹으면','마시면','먹었더니','챙겨먹',
+];
+
+function detectKwType(kw) {
+  var kl = kw.replace(/\s+/g, '').toLowerCase();
+
+  // ── 0. 주제 선택 오버라이드 ──
+  if (currentTopic === 'tech')         return 'tech';
+  if (currentTopic === 'lifestyle')    return 'lifestyle';
+  if (currentTopic === 'relationship') return 'relationship';
+  if (currentTopic === 'recipe')       return 'recipe';
+  if (currentTopic === 'free') {
+    var freeVal = (document.getElementById('freeTopicInput') || {}).value || '';
+    return freeVal.trim() ? 'free' : 'general';
+  }
+
+  // ── 1. medical 정확 매칭 ──
+  for (var i = 0; i < MEDICAL_EXACT.length; i++) {
+    if (kl.indexOf(MEDICAL_EXACT[i]) !== -1) return 'medical';
+  }
+
+  // ── 2. 복합 키워드 후처리 ──
+  // "~에좋은음식" / "~좋은음식" → food
+  if (/(에좋은음식|에좋은차|좋은음식|좋은차|에나쁜음식)/.test(kl)) return 'food';
+  // "~효능" / "~효과" → food
+  if (/(효능|효과)$/.test(kl)) return 'food';
+  // "~약" → medical
+  if (/약$/.test(kl)) return 'medical';
+  // "~수치" / "~혈색소" / "~혈당" 포함 → disease
+  if (/(수치|혈색소|혈당|혈압|혈중)/.test(kl)) return 'disease';
+  // "~계산기" / "계산하기" / "단식" / "다이어트" → general
+  if (/(계산기|계산하기|단식|다이어트)/.test(kl)) return 'general';
+  // "~혈자리" / "~경혈" / "~지압" → general
+  if (/(혈자리|경혈|지압점)/.test(kl)) return 'general';
+  // "스테로이드" → medical
+  if (kl.indexOf('스테로이드') !== -1) return 'medical';
+  // "경동맥" / "경추" / "요추" → disease
+  if (/(경동맥|경추|요추|추간판)/.test(kl)) return 'disease';
+  // "~암증상" / "~병증상" / "~증상" 끝 → disease
+  if (/(암증상|병증상|증상$)/.test(kl)) return 'disease';
+  // "~뇨" → disease
+  if (/뇨$/.test(kl)) return 'disease';
+  // "난시" / "원시" / "근시" → disease
+  if (/(난시|원시|근시|사시|약시)/.test(kl)) return 'disease';
+  // "당화혈색소" → disease (점수 전에 명시적 처리)
+  if (/(당화|혈색소|당뇨수치|정상수치)/.test(kl)) return 'disease';
+  // "~소" (글루타치온 제외, 이미 food에 있음) 처리 없음
+
+  // ── 3. disease / food 점수 ──
+  var dScore = DISEASE_WORDS.filter(function(w){ return kl.indexOf(w) !== -1; }).length;
+  var fScore = FOOD_WORDS.filter(function(w){ return kl.indexOf(w) !== -1; }).length;
+  if (dScore > 0 || fScore > 0) {
+    return dScore >= fScore ? 'disease' : 'food';
+  }
+
+  // ── 4. 끝 글자 휴리스틱 ──
+  if (/[암염통]$/.test(kl)) return 'disease';
+  if (/증$/.test(kl)) return 'disease';
+  if (/병$/.test(kl) && !/병원/.test(kl)) return 'disease';
+
+  return 'general';
+}
+// ═══════════════════════════════════════════════════════
+// 패턴 정의
+// ═══════════════════════════════════════════════════════
+
+// (구버전 DS/FS 호환용 더미 — 아래 PATTERNS에서 직접 사용하지 않음)
+var DS = {
+  symptom: [
+    '초기 증상 아는 사람이 거의 없습니다',
+    '전조증상 딱 이 증상 보이면 바로 병원 가세요',
+    '초기증상 모르고 방치하다 후회하는 이유',
+    '전조증상이 이렇게 나타납니다',
+    '초기 신호 놓치면 평생 달고 삽니다',
+    '이 증상이 보이면 이미 진행 중입니다',
+    '증상 없다고 안심했다가 후회하는 이유',
+  ],
+  cause: [
+    '진짜 원인이 따로 있었습니다',
+    '원인 의외로 이것 때문이었습니다',
+    '발병 원인 몰랐다면 지금 당장 확인하세요',
+    '원인 이걸 모르면 평생 재발합니다',
+    '숨은 원인 알고 나면 소름 돋습니다',
+    '의외의 원인에 전문가도 충격받았습니다',
+  ],
+  manage: [
+    '약 없이 관리하는 사람들의 공통된 비결',
+    '생활습관 이것만 바꿔도 달라집니다',
+    '예방법 실천하면 발병률 뚝 떨어집니다',
+    '자연 치유에 성공한 사람들이 한 것',
+    '관리법 병원도 추천하는 방법입니다',
+    '약 줄이고 싶다면 이 습관부터 시작하세요',
+  ],
+  danger: [
+    '합병증 이것이 가장 무서운 이유입니다',
+    '방치하면 생기는 최악의 결과',
+    '악화되기 직전 반드시 나타나는 신호',
+    '이 신호 보이면 합병증이 이미 시작된 겁니다',
+    '방치 시 돌이킬 수 없는 이유',
+  ],
+  early: [
+    '초기에 잡는 사람들이 하는 한 가지',
+    '초기 관리법 이것만 알면 완전히 달라집니다',
+    '조기 발견 이 신호를 절대 놓치지 마세요',
+    '초기 단계에서 잡는 법 전문가들이 강조하는 것',
+  ],
+};
+
+// 음식/건기식용 완성형 문구 묶음
+var FS = {
+  effect: [
+    '효능 이 성분이 핵심입니다',
+    '진짜 효능 먹기 전 반드시 알아야 할 것',
+    '효능 이것만 알면 선택이 달라집니다',
+    '몸에 미치는 효능 '+rn(2,4)+'주 후 이렇게 달라집니다',
+    '놀라운 효능 전문가들이 입을 모아 추천하는 이유',
+    '의외의 효능 알고 나면 매일 챙기게 됩니다',
+  ],
+  howto: [
+    '먹는 법 이렇게 드셔야 효과가 납니다',
+    '올바른 복용법 모르면 돈 낭비입니다',
+    '제대로 먹는 법 '+rn(90,95)+'%가 잘못 알고 있습니다',
+    '흡수율 높이는 먹는 법이 따로 있습니다',
+    '섭취법 이렇게 먹어야 흡수율이 3배 올라갑니다',
+    '복용법 이것만 지켜도 효과가 완전히 달라집니다',
+  ],
+  side: [
+    '부작용 이런 분들은 절대 드시면 안 됩니다',
+    '부작용 장기 복용 전 반드시 확인하세요',
+    '과다 복용 시 생기는 의외의 부작용',
+    '부작용 '+rn(3,5)+'가지 먹기 전 꼭 확인하세요',
+    '이런 분들에게는 독이 될 수 있습니다',
+    '부작용 의사도 경고하는 주의사항',
+  ],
+  combine: [
+    '함께 먹으면 효과 '+rn(2,3)+'배 되는 조합',
+    '이것과 같이 먹으면 흡수율이 폭발합니다',
+    '궁합 이 음식과 함께 드세요',
+    '절대 같이 먹으면 안 되는 조합도 있습니다',
+  ],
+  timing: [
+    '공복에 먹어야 하는 이유가 있습니다',
+    '먹는 시간 이때 드셔야 효과가 극대화됩니다',
+    '식후에 먹어야 효과 나는 이유',
+    '최적 섭취 타이밍 모르면 절반은 손해입니다',
+  ],
+  compare: [
+    '제품 고르는 법 성분표에서 이것만 확인하세요',
+    '비싼 제품보다 효과 좋은 가성비 선택법',
+    '등급 구별법 가짜 고르면 헛돈만 씁니다',
+    '제품 선택 기준 전문가들이 추천하는 방법',
+  ],
+};
+
+function pickDS(key) { return pick(DS[key]); }
+function pickFS(key) { return pick(FS[key]); }
+
+// ═══════════════════════════════════════════════════════
+// 패턴 정의
+// ═══════════════════════════════════════════════════════
+var PATTERNS = [
+
+  // ── 대명사 호기심형 ──────────────────────────────────
+  {
+    id: 'proxy', name: '대명사 호기심형', desc: "'이것' 대명사로 궁금증 자극",
+    fns: [
+      function(k,t){
+        if(t==='disease')      return '\'이 증상\' 보이면 즉시 체크! '+k+'이 보내는 마지막 경고';
+        if(t==='food')         return '아침 공복 \'이것\' 한 입, '+k+' 효능이 마법처럼 나타납니다';
+        if(t==='tech')         return '\'이것\' 모르면 '+k+' 손해 봅니다';
+        if(t==='lifestyle')    return '\'이 습관\' 하나로 '+k+'이 달라졌습니다';
+        if(t==='relationship') return '\'이 말\' 한마디가 '+k+' 관계를 바꿉니다';
+        if(t==='recipe')       return '\'이것\' 넣었더니 '+k+' 맛이 완전히 달라졌어요';
+        if(t==='free')         return '\'이것\' 하나만 알아도 '+getFreeCtx()+' 속 '+k+'이 달라집니다';
+        return '\'이것\' 하나만 바꿨더니 '+k+' 걱정이 사라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이 전조증상\' 나타나면 즉시 병원으로! '+k+'의 마지막 SOS';
+        if(t==='food')    return '\'이것\'과 같이 먹으면 '+k+' 흡수율이 완전히 달라집니다';
+        return '\'이것\' 하나만 바꿨더니 '+k+' 걱정이 사라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이 초기증상\' 보이면 이미 시작된 것? '+k+'의 무서운 신호';
+        if(t==='food')    return '\'이것\' 하나만 바꿨더니 '+k+' 효능이 2배로 올라갑니다';
+        return '\'이 특징\' 알고 나면 '+k+' 선택이 완전히 달라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이런 행동..\' '+k+' 환자들이 초기증상으로 공통 보이는 소름 돋는 특징';
+        if(t==='food')    return '밥 지을 때 \'이것\' 한 스푼, '+k+' 부작용 없이 수치가 바뀝니다';
+        return '\'이것\' 하나만 알았어도 '+k+' 걱정을 안 했을 겁니다';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이 신호\' 나타나면 즉시 병원으로! '+k+' 전조증상 마지막 경고';
+        if(t==='food')    return '\'이것\'만 추가하면 '+k+' 부작용 없이 효능이 올라갑니다';
+        return '\'이거 하나\' 바꾸고 나서 '+k+' 걱정이 사라진 사람들';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이 초기증상\' '+rn(2,3)+'개 해당하면 '+k+' 지금 당장 검사 받으세요';
+        if(t==='food')    return '식후 \'이것\' 한 잔, '+k+' 먹는 법 이렇게 하면 효능이 폭발합니다';
+        return '\'이것\' 하나만 바꿨더니 '+k+' 고민이 사라집니다';
+      },
+    ]
+  },
+
+  // ── 전문가 권위형 ─────────────────────────────────────
+  {
+    id: 'authority', name: '전문가 권위형', desc: '의사·전문가 극찬/경고 프레임',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '의사들이 조용히 알고 있는 '+k+'의 진짜 발병 원인';
+        if(t==='food')    return '의사들이 매일 챙겨 먹는다는 '+k+', 올바른 먹는 법이 따로 있습니다';
+        return '의사들이 조용히 알고 있는 '+k+'의 진짜 원인';
+      },
+      function(k,t){
+        if(t==='disease') return '전문가들이 경고하는 '+k+' 전조증상 악화시키는 최악의 생활 습관';
+        if(t==='food')    return '전문가들이 극찬한 '+k+', 먹기 전 반드시 알아야 할 진짜 효능';
+        return '\'교과서에 없는 이야기\' 병원에서 안 알려주는 '+k+' 관리법';
+      },
+      function(k,t){
+        if(t==='disease') return '\'교과서에 없는 이야기\' 병원에서 안 알려주는 '+k+' 초기증상 관리법';
+        if(t==='food')    return '\'교과서에 없는 이야기\' 병원에서 안 알려주는 '+k+' 올바른 복용법';
+        return '전문가들이 입을 모아 말하는 '+k+' 필수 체크 '+rn(4,6)+'가지';
+      },
+      function(k,t){
+        if(t==='disease') return '의사 경력 40년이 충격받은 '+k+'의 의외의 발병 원인';
+        if(t==='food')    return '의사 경력 40년이 밝히는 '+k+' 장기 복용 시 부작용';
+        return '의사 경력 40년이 충격받은 '+k+'의 진짜 원인';
+      },
+      function(k,t){
+        if(t==='disease') return '전문가들이 콕 집은 '+k+' 초기증상, 이것만 알면 됩니다';
+        if(t==='food')    return '전문가들이 콕 집은 '+k+' 흡수율 높이는 최적 섭취 타이밍';
+        return '전문가들이 콕 집은 '+k+' 관리 핵심 '+rn(4,6)+'가지';
+      },
+      function(k,t){
+        if(t==='disease') return '전문가들이 강조하는 '+k+' 전조증상 조기 발견법';
+        if(t==='food')    return '전문가들이 강조하는 '+k+' 제대로 먹는 법 vs 헛먹는 법';
+        return '전문가들이 강조한 '+k+' 필수 체크리스트';
+      },
+    ]
+  },
+
+  // ── 통계 소속형 ───────────────────────────────────────
+  {
+    id: 'stat', name: '통계 소속형', desc: '"한국인 90%" 공감대·소속감 자극',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '한국인 '+rn(80,95)+'%가 놓치는 '+k+' 초기증상';
+        if(t==='food')    return '한국인 '+rn(80,95)+'%가 모르는 '+k+' 진짜 효능';
+        return '한국인 '+rn(80,95)+'%가 놓치는 '+k+'의 진짜 시작';
+      },
+      function(k,t){
+        if(t==='disease') return '한국인 '+rn(80,95)+'%는 통증 없어 놓치는 '+k+' 전조증상';
+        if(t==='food')    return '한국인 '+rn(80,95)+'%가 잘못 알고 있는 '+k+' 먹는 법';
+        return '한국인 '+rn(80,95)+'%가 매일 먹는 \'이것\', 사실은 '+k+'의 주범?';
+      },
+      function(k,t){
+        if(t==='disease') return '중년 이후 '+rn(70,90)+'%가 경험한다는 '+k+' 공통 전조증상';
+        if(t==='food')    return '중년 이후 '+rn(70,90)+'%가 잘못 챙기는 '+k+' 복용 실수';
+        return '중년 이후 '+rn(70,90)+'%가 겪는다는 '+k+'의 공통 패턴';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 환자 '+rn(80,95)+'%가 몰랐다는 의외의 초기증상';
+        if(t==='food')    return k+' 먹는 사람 '+rn(80,95)+'%가 놓치는 결정적인 먹는 법';
+        return k+' 관련 '+rn(80,95)+'%가 모르고 있는 의외의 사실';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 전조증상 '+rn(80,95)+'%가 이 신호를 그냥 지나쳤습니다';
+        if(t==='food')    return k+' 부작용 '+rn(80,95)+'%가 모르고 넘어갑니다';
+        return '한국인 '+rn(80,95)+'%가 잘못 알고 있는 '+k+' 상식';
+      },
+    ]
+  },
+
+  // ── 착각 반전형 ───────────────────────────────────────
+  {
+    id: 'reversal', name: '착각 반전형', desc: '"알고 보니" "착각" 반전 스토리',
+    fns: [
+      function(k,t){
+        if(t==='disease') return k+' 때문이 아니다? 진짜 발병 원인이 따로 있었습니다';
+        if(t==='food')    return '건강식인 줄 알았는데? 의외로 이런 분에겐 독이 되는 '+k+' 부작용';
+        return k+' 때문이 아니다? 진짜 원인이 따로 있습니다';
+      },
+      function(k,t){
+        if(t==='disease') return k+'에 대한 상식이 전부 틀렸다면? 진짜 원인과 전조증상';
+        if(t==='food')    return k+'에 대한 상식이 전부 틀렸다면? 제대로 된 복용법';
+        return '모두가 알고 있는 '+k+' 상식, 사실은 틀렸습니다';
+      },
+      function(k,t){
+        if(t==='disease') return '모두가 알고 있는 '+k+' 상식이 틀렸을 수도 있습니다';
+        if(t==='food')    return '몸에 좋은 줄 알고 먹었는데.. 사실은 '+k+' 부작용이 있었습니다';
+        return '마른 사람도 '+k+' 생기는 충격적인 이유';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 운동 열심히 해도 생기는 뜻밖의 원인';
+        if(t==='food')    return '기름진 줄 알았는데? 의외로 '+k+' 효능에 도움 되는 반전';
+        return '별것 아닌 줄 알았는데.. '+k+' 알고 보니 이런 의미였습니다';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 스트레스 때문인 줄만 알았는데, 진짜 원인이 따로 있었습니다';
+        if(t==='food')    return '다이어트에 방해될 줄 알았는데? 오히려 도움이 되는 '+k+' 진짜 효능';
+        return '상식이 틀렸습니다! '+k+'에 대해 모두가 오해하고 있는 것';
+      },
+      function(k,t){
+        if(t==='disease') return '겉으로는 멀쩡한데 속은 이미 시작된 '+k+' 전조증상';
+        if(t==='food')    return '흰 쌀밥보다 무섭다? 먹는 즉시 '+k+' 효능을 없애는 최악의 조합';
+        return '모두가 알고 있는 '+k+' 상식, 사실은 틀렸습니다';
+      },
+    ]
+  },
+
+  // ── 기간 결과형 ───────────────────────────────────────
+  {
+    id: 'period', name: '기간 결과형', desc: '"일주일 만에" 빠른 결과 강조',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '일주일 만에 '+k+' 초기증상 잡는 기적의 생활 관리법';
+        if(t==='food')    return '일주일 만에 '+k+' 효능을 체감하는 올바른 먹는 법';
+        return '일주일 만에 '+k+' 고민을 해결한 사람들의 공통점';
+      },
+      function(k,t){
+        if(t==='disease') return '딱 '+rn(3,7)+'일 만에 '+k+' 전조증상 확인하고 관리하는 방법';
+        if(t==='food')    return '딱 '+rn(3,7)+'일 만에 '+k+' 흡수율이 달라지는 공복 복용법';
+        return '딱 '+rn(3,7)+'일 만에 '+k+' 고민이 달라지는 생활 습관';
+      },
+      function(k,t){
+        if(t==='disease') return '하루 '+rn(1,2)+'잔의 기적! '+k+' 약 없이 관리하는 사람들의 비결';
+        if(t==='food')    return '하루 딱 1번! '+k+' 효능이 폭발하는 최적의 섭취 타이밍';
+        return '하루 딱 한 가지! '+k+' 걱정을 덜어주는 기적의 방법';
+      },
+      function(k,t){
+        if(t==='disease') return '병원 가기 전 딱 한 달만 해보세요! '+k+' 초기증상 관리 탈출기';
+        if(t==='food')    return '매일 아침 '+k+' 챙겨 먹었더니 '+rn(2,4)+'주 후 몸이 달라졌습니다';
+        return '매일 아침 이것만 챙겨도, '+rn(2,4)+'주 만에 '+k+' 결과가 달라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return rn(3,7)+'일만 이렇게 해보세요, '+k+' 전조증상이 눈에 띄게 달라집니다';
+        if(t==='food')    return rn(3,7)+'일간의 변화! '+k+' 매일 먹었더니 몸에 생긴 일';
+        return rn(3,7)+'일만 이렇게 해보세요, '+k+' 고민이 눈에 띄게 달라집니다';
+      },
+    ]
+  },
+
+  // ── 위험 경고형 ───────────────────────────────────────
+  {
+    id: 'warning', name: '위험 경고형', desc: '골든타임·위험 신호·마지막 경고',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '방심하면 위험! '+k+' 나빠졌을 때 몸이 보내는 전조증상 '+rn(3,5)+'가지';
+        if(t==='food')    return '방심하면 위험! 잘못 먹으면 오히려 독이 되는 '+k+' 부작용';
+        return '방심하면 위험! '+k+' 잘못 알고 있다가 후회하는 이유';
+      },
+      function(k,t){
+        if(t==='disease') return '더 늦기 전에! '+k+' 초기증상 지금 당장 반드시 체크하세요';
+        if(t==='food')    return '더 늦기 전에! '+k+' 장기 복용 전 반드시 확인할 부작용';
+        return '더 늦기 전에! '+k+' 반드시 체크해야 할 것들';
+      },
+      function(k,t){
+        if(t==='disease') return '1초가 시급합니다! '+k+' 전조증상 초기에 잡는 마지막 타이밍';
+        if(t==='food')    return '\'이런 분\' 절대 드시면 안 됩니다! '+k+' 복용 전 꼭 확인할 부작용';
+        return '지금 당장 확인하세요! '+k+' 놓치면 안 되는 타이밍';
+      },
+      function(k,t){
+        if(t==='disease') return '방치하면 안 됩니다! '+k+' 합병증으로 이어지기 전 지금 당장 병원 가세요';
+        if(t==='food')    return k+' 과다 복용 시 생기는 예상 밖의 부작용 '+rn(3,5)+'가지';
+        return '방치하면 안 됩니다! '+k+' 지금 당장 확인해야 할 것들';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이 초기증상\' '+rn(2,3)+'개 해당하면 '+k+' 지금 당장 검사받으세요';
+        if(t==='food')    return k+' 장기 복용 시 반드시 체크해야 할 부작용 '+rn(3,5)+'가지';
+        return '놓치면 절대 안 되는 '+k+' 필수 체크리스트';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 골든타임, 이 시간 안에 병원 못 가면 돌이킬 수 없습니다';
+        if(t==='food')    return k+' 효능 기대하다가 오히려 이 부작용 생길 수 있습니다';
+        return k+' 가볍게 봤다가 돌이킬 수 없게 되는 이유';
+      },
+    ]
+  },
+
+  // ── 후회 공감형 ───────────────────────────────────────
+  {
+    id: 'regret', name: '후회 공감형', desc: '"진작 알았더라면" 후회 정서 자극',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '이걸 알았더라면! '+k+' 전조증상 보고 가장 아쉬워하는 것';
+        if(t==='food')    return '이걸 알았더라면! '+k+' 먹는 법 먼저 확인할 걸 후회한 이유';
+        return '이걸 알았더라면! '+k+'에 대해 가장 아쉬워하는 것';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 진단받고 나서 제일 후회하는 초기증상 모음';
+        if(t==='food')    return k+' 먹고 부작용 겪은 사람들이 공통으로 한 말';
+        return '"왜 진작 몰랐을까" '+k+' 준비하면서 가장 아쉬웠던 것';
+      },
+      function(k,t){
+        if(t==='disease') return '"그때 그냥 넘어갔던 게 후회됩니다" '+k+' 전조증상 모음';
+        if(t==='food')    return '"잘못 골랐던 게 후회됩니다" '+k+' 제품 고르는 법';
+        return '"그때 그냥 넘어갔던 게 후회됩니다" '+k+' 경험자들의 공통된 이야기';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 몇 년 전에만 알았어도 달랐을 전조증상들';
+        if(t==='food')    return k+' 올바른 먹는 법 진작 알았더라면 달랐을 것들';
+        return '수십 년 잘못 알고 있었던 '+k+' 상식의 함정';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 초기증상 있는데 이거 안 하면 나중에 분명 후회합니다';
+        if(t==='food')    return k+' 부작용 있는데 이거 안 확인하면 나중에 분명 후회합니다';
+        return k+' 있는데 이거 안 하면 나중에 분명 후회합니다';
+      },
+    ]
+  },
+
+  // ── 패턴 폭로형 ───────────────────────────────────────
+  {
+    id: 'pattern', name: '패턴 폭로형', desc: '"공통점" "소름 돋는 특징" 폭로',
+    fns: [
+      function(k,t){
+        if(t==='disease') return k+' 걸린 사람들, 전조증상 보면 공통점이 있습니다';
+        if(t==='food')    return k+' 먹고 효능 본 사람들, 알고 보면 공통점이 있습니다';
+        return k+' 경험한 사람, 알고 보면 공통점이 있습니다';
+      },
+      function(k,t){
+        if(t==='disease') return '"나만 이런가?" '+k+' 환자들이 몰래 겪는 초기증상들';
+        if(t==='food')    return '"나만 이런가?" '+k+' 먹고 불편했던 사람들의 공통 원인';
+        return '"나만 이런가?" '+k+' 겪으면서 몰래 드는 생각들';
+      },
+      function(k,t){
+        if(t==='disease') return '\'이런 행동..\' '+k+' 환자들이 초기증상으로 공통 보이는 소름 돋는 특징';
+        if(t==='food')    return '\'이런 행동..\' '+k+' 효능 못 보는 사람들의 공통된 실수';
+        return '\'이런 행동..\' '+k+' 관련해 공통적으로 보이는 소름 돋는 특징';
+      },
+      function(k,t){
+        if(t==='disease') return '중년 이후 '+k+' 있는 분들이 공통적으로 하는 후회';
+        if(t==='food')    return '평생 '+k+' 효능 못 보는 사람들이 반복하는 공통 실수';
+        return '평생 '+k+' 달고 사는 사람들이 젊었을 때 하는 공통된 습관';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 환자들이 뒤늦게 알게 되는 충격적인 발병 원인';
+        if(t==='food')    return k+' 제대로 먹는 법 아는 사람들만 알고 있는 비밀';
+        return k+' 관련해 뒤늦게 알게 되는 충격적인 사실';
+      },
+    ]
+  },
+
+  // ── 비밀 폭로형 ───────────────────────────────────────
+  {
+    id: 'secret', name: '비밀 폭로형', desc: '"아무도 안 알려주는" 정보 독점감',
+    fns: [
+      function(k,t){
+        if(t==='disease') return k+' 초기증상에 대해 의사들이 잘 말 안 해주는 진실';
+        if(t==='food')    return k+' 부작용에 대해 제조사가 잘 말 안 해주는 진실';
+        return k+'에 대해 아무도 말 안 해주는 진실';
+      },
+      function(k,t){
+        if(t==='disease') return '아무도 알려주지 않는 '+k+' 진짜 발병 원인이 따로 있었습니다';
+        if(t==='food')    return '아무도 알려주지 않는 '+k+' 먹으면 안 되는 경우';
+        return '아무도 알려주지 않는 '+k+'의 의외의 원인';
+      },
+      function(k,t){
+        if(t==='disease') return '"정말요?" '+k+' 환자들이 충격받은 의외의 발병 원인';
+        if(t==='food')    return '"정말요?" '+k+' 먹는 사람들이 충격받은 의외의 효능';
+        return '"정말요?" '+k+'에 대해 충격받은 의외의 사실';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 약 없이도 초기증상 관리되는 사람들의 공통점';
+        if(t==='food')    return k+' 효능 제대로 보는 사람들만 아는 비밀 먹는 법';
+        return '"이거 몰랐으면 큰일 날 뻔" '+k+' 필수 체크 사항';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 알고 나면 소름 돋는 전조증상이 있습니다';
+        if(t==='food')    return k+' 알고 나면 소름 돋는 진짜 효능이 있습니다';
+        return k+' 알고 나면 소름 돋는 사실이 있습니다';
+      },
+    ]
+  },
+
+  // ── 비용 정보형 ───────────────────────────────────────
+  {
+    id: 'cost', name: '비용 정보형', desc: '가격·보험·혜택 실용 정보',
+    fns: [
+      function(k,t){
+        if(t==='food') return k+' 비싼 제품 살 필요 없다? 가성비로 고르는 법';
+        return k+' 알아보기 전 반드시 확인해야 할 것들';
+      },
+      function(k,t){
+        if(t==='food') return k+' 잘못 고르면 돈만 버립니다, 성분표에서 이것만 확인하세요';
+        return k+' 처음인 분들이 꼭 알아야 할 것들';
+      },
+      function(k,t){ return k+' 했다가 후회한 사람들의 공통점'; },
+      function(k,t){ return k+' 처음인 분들이 꼭 알아야 할 것들'; },
+      function(k,t){ return k+' 놓치면 손해! 꼭 챙겨야 할 항목'; },
+      function(k,t){ return k+' 잘못 선택하면 돈만 버립니다'; },
+      function(k,t){ return k+' 전에 반드시 알아야 할 주의사항'; },
+      function(k,t){ return '지금 당장 '+k+' 조건 확인하세요'; },
+    ]
+  },
+
+  // ── 감정 공감형 ───────────────────────────────────────
+  {
+    id: 'empathy', name: '감정 공감형', desc: '"혼자가 아닙니다" 위로·공감',
+    fns: [
+      function(k,t){
+        if(t==='disease') return k+' 진단받고 가장 먼저 드는 감정, 혼자가 아닙니다';
+        if(t==='food')    return k+' 먹어도 효능 없어서 포기하려는 분들에게 드리는 말';
+        return k+' 고민이시라면 저도 같은 경험을 했습니다';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 있는 분들이 초기증상 때문에 가장 무서워하는 것들';
+        if(t==='food')    return k+' 부작용 걱정하는 분들이 공통적으로 하시는 말씀';
+        return k+' 걱정하는 어르신들이 공통적으로 하시는 말씀';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 환자 가족들이 가장 힘들다는 것들';
+        if(t==='food')    return '"나만 이런가?" '+k+' 먹고 몸이 이상하다 느끼는 분들에게';
+        return '"나만 이런가?" '+k+' 겪으면서 느끼는 것들';
+      },
+      function(k,t){
+        if(t==='disease') return '"나만 이런가?" '+k+' 전조증상 겪으면서 몰래 드는 생각들';
+        if(t==='food')    return k+' 효능 못 느껴서 실망하셨나요? 이 먹는 법이 문제일 수 있습니다';
+        return k+' 고민이시라면 저도 같은 경험을 했습니다';
+      },
+    ]
+  },
+
+  // ── 충격 팩트형 ───────────────────────────────────────
+  {
+    id: 'shock', name: '충격 팩트형', desc: '"충격 진실" 숫자·데이터로 강타',
+    fns: [
+      function(k,t){
+        if(t==='disease') return '생존율 '+rn(5,20)+'%, 절대 놓치면 안 되는 '+k+' 초기증상';
+        if(t==='food')    return k+' 흡수율 '+rn(200,500)+'% 높이는 충격적인 먹는 법';
+        return '\'몰랐던 사실\' '+k+' 알고 나면 시각이 완전히 달라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return k+' 합병증이 무서운 진짜 이유, 이것 때문입니다';
+        if(t==='food')    return k+' 장기 복용 '+rn(3,6)+'개월 후 몸에 일어나는 변화';
+        return '"교과서에 없는 이야기" '+k+'에 관해 아무도 말 안 해준 진실';
+      },
+      function(k,t){
+        if(t==='disease') return '겉으로는 멀쩡한데 속은 이미 시작된 '+k+' 전조증상';
+        if(t==='food')    return k+' 매일 먹었더니 '+rn(2,4)+'주 후 몸에 생긴 변화';
+        return k+' 알고 나면 선택이 달라집니다';
+      },
+      function(k,t){
+        if(t==='disease') return '"의사한테 혼났습니다" '+k+' 초기증상 있으면서 하면 안 되는 것들';
+        if(t==='food')    return '"의사한테 혼났습니다" '+k+' 이렇게 먹으면 효능은커녕 독이 됩니다';
+        return k+' 알고 나면 선택이 달라집니다';
+      },
+      function(k,t){
+        if(t==='disease')      return k+' 전조증상 '+rn(2,3)+'가지 무시했다가 평생 후회한 이유';
+        if(t==='food')         return k+' 제대로 먹는 법 모르면 '+rn(60,80)+'%는 흡수도 안 됩니다';
+        if(t==='tech')         return k+' 성공한 사람들의 공통점 '+rn(3,5)+'가지';
+        if(t==='lifestyle')    return k+' 잘 되는 사람들에게는 이런 패턴이 있습니다';
+        if(t==='relationship') return k+' 망치는 사람들의 공통점 '+rn(3,5)+'가지';
+        if(t==='recipe')       return k+' 맛집들이 공통으로 쓰는 비법 '+rn(3,5)+'가지';
+        if(t==='free')         return getFreeCtx()+' '+k+' 알고 나면 소름 돋는 공통점이 있습니다';
+        return k+' 알고 나면 소름 돋는 사실이 있습니다';
+      },
+    ]
+  },
+];
+
+
+// ═══════════════════════════════════════════════════════
+// medical 타입 전용 제목 템플릿
+// 치료·보험·비용·검사·수술 관련 실용 정보형
+// ═══════════════════════════════════════════════════════
+var MEDICAL_TEMPLATES = [
+  // 비용/가격
+  function(k){ return k+' 병원마다 가격이 다른 진짜 이유'; },
+  function(k){ return k+' 홈페이지 가격과 실제 청구 금액이 다른 이유'; },
+  function(k){ return k+' 처음인 분들이 꼭 알아야 할 비용 구조'; },
+  function(k){ return k+' 몰랐다가 더 냈던 비용 이야기'; },
+  function(k){ return k+' 잘못 선택하면 돈만 버립니다'; },
+  function(k){ return k+' 놓치면 손해! 꼭 챙겨야 할 항목'; },
+  function(k){ return '지금 당장 '+k+' 조건 확인하세요'; },
+  function(k){ return k+' 알아보다 놓치기 쉬운 함정'; },
+  // 보험/혜택
+  function(k){ return k+' 보험 적용 되는지 먼저 확인하세요'; },
+  function(k){ return k+' 실손 청구 가능한 경우와 불가능한 경우'; },
+  function(k){ return k+' 산정특례·실손 전부 챙기는 방법'; },
+  function(k){ return k+' 병원 가기 전 보험 적용 여부 확인하는 법'; },
+  // 치료 과정/선택
+  function(k){ return k+' 했다가 후회한 사람들의 공통점'; },
+  function(k){ return k+' 처음인 분들이 꼭 알아야 할 것들'; },
+  function(k){ return k+' 잘못 선택하면 이런 일이 생깁니다'; },
+  function(k){ return k+' 전에 반드시 알아야 할 주의사항'; },
+  function(k){ return k+' 미리 알았으면 좋았을 것들'; },
+  function(k){ return k+' 준비하면서 가장 아쉬웠던 것'; },
+  // 의사/전문가 프레임
+  function(k){ return '\'교과서에 없는 이야기\' 병원에서 안 알려주는 '+k+' 비용 구조'; },
+  function(k){ return '의사들이 잘 말 안 해주는 '+k+' 진짜 효과와 한계'; },
+  function(k){ return k+' 전문의에게 꼭 물어봐야 할 질문 '+rn(3,5)+'가지'; },
+  function(k){ return '의사 경력 30년이 알려주는 '+k+' 병원 선택 기준'; },
+  // 후회/경험
+  function(k){ return '"왜 진작 알았을까" '+k+' 겪고 나서 가장 후회한 것'; },
+  function(k){ return '"그때 그냥 넘어갔던 게 후회됩니다" '+k+' 경험담'; },
+  function(k){ return k+' 몇 년 전에만 알았어도 달랐을 것들'; },
+  function(k){ return '"이거 모르면 큰일 납니다" '+k+' 필수 체크리스트'; },
+  // 선택/비교
+  function(k){ return k+' 비교해보니 이렇게 차이가 납니다'; },
+  function(k){ return k+' 고를 때 반드시 따져봐야 할 기준'; },
+  function(k){ return k+' 잘못 고르면 나중에 이런 문제가 생깁니다'; },
+  function(k){ return k+' 처음인 분들이 자주 하는 실수 '+rn(3,5)+'가지'; },
+  // 통계/팩트
+  function(k){ return '한국인 '+rn(70,90)+'%가 모르는 '+k+' 보험 적용 조건'; },
+  function(k){ return '한국인 '+rn(70,90)+'%가 놓치는 '+k+' 비용 절감 방법'; },
+  function(k){ return k+' 받은 사람 '+rn(70,90)+'%가 뒤늦게 알게 되는 사실'; },
+  function(k){ return '"정말요?" '+k+' 경험자들이 충격받은 의외의 사실'; },
+];
+
+// ═══════════════════════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════════════════════
+var activePatterns = new Set(PATTERNS.map(function(p){ return p.id; }));
+var results = [];
+var usedTitles = new Set();
+
+// ═══════════════════════════════════════════════════════
+// 초기화
+// ═══════════════════════════════════════════════════════
+(function init() {
+  var grid = document.getElementById('patternGrid');
+  PATTERNS.forEach(function(p) {
+    var btn = document.createElement('div');
+    btn.className = 'pattern-btn active';
+    btn.dataset.id = p.id;
+    btn.innerHTML = '<div class="p-name">'+p.name+'</div><div class="p-desc">'+p.desc+'</div>';
+    btn.addEventListener('click', function() {
+      if (activePatterns.has(p.id)) {
+        activePatterns.delete(p.id);
+        btn.classList.remove('active');
+      } else {
+        activePatterns.add(p.id);
+        btn.classList.add('active');
+      }
+    });
+    grid.appendChild(btn);
+  });
+
+  // 번호 스타일
+  document.getElementById('prefixRow').addEventListener('click', function(e) {
+    var chip = e.target.closest('.prefix-chip');
+    if (!chip) return;
+    document.querySelectorAll('.prefix-chip').forEach(function(c){ c.classList.remove('active'); });
+    chip.classList.add('active');
+  });
+
+  // Enter 키
+  document.getElementById('kwInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') generate();
+  });
+})();
+
+function toggleAll() {
+  var allActive = activePatterns.size === PATTERNS.length;
+  document.querySelectorAll('.pattern-btn').forEach(function(btn) {
+    if (allActive) {
+      btn.classList.remove('active');
+      activePatterns.delete(btn.dataset.id);
+    } else {
+      btn.classList.add('active');
+      activePatterns.add(btn.dataset.id);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// 생성
+// ═══════════════════════════════════════════════════════
+function getPrefixStyle() {
+  var active = document.querySelector('.prefix-chip.active');
+  return active ? active.dataset.v : 'circle';
+}
+
+
+// ═══════════════════════════════════════════════════════
+// 건강 외 주제 → Claude API로 제목 생성
+// ═══════════════════════════════════════════════════════
+var TOPIC_LABELS = {
+  tech:         '재테크/IT',
+  lifestyle:    '라이프스타일/자기계발',
+  relationship: '심리/인간관계',
+  recipe:       '요리/식품',
+  free:         ''
+};
+
+async function generateByAPI() {
+  var raw = document.getElementById('kwInput').value.trim();
+  if (!raw) { alert('키워드를 입력해주세요!'); return; }
+
+  var keywords = raw.split(/[,，、]/).map(function(k){ return k.trim(); }).filter(Boolean).slice(0, 5);
+  var total    = parseInt(document.getElementById('countSel').value) || 10;
+  if (HAS_LICENSE || IS_ADMIN) {
+    if (!checkQuota(total)) return;
+  } else {
+    var allowed = checkSample('normal', total);
+    if (allowed === false) return;
+    total = allowed;
+  }
+  var topicLabel = currentTopic === 'free'
+    ? ((document.getElementById('freeTopicInput') || {}).value || '').trim() || '일반'
+    : (TOPIC_LABELS[currentTopic] || '일반');
+
+  // 로딩 표시
+  document.getElementById('resultArea').style.display = '';
+  document.getElementById('resultArea').innerHTML =
+    '<div class="empty-state"><div class="icon" style="animation:spin 1s linear infinite;display:inline-block;">⏳</div>' +
+    '<br>AI가 ' + topicLabel + ' 제목을 생성 중입니다...</div>';
+
+  var prompt =
+    '한국어 블로그/유튜브용 클릭 유도 제목을 만들어주세요.\n\n' +
+    '주제: ' + topicLabel + '\n' +
+    '키워드: ' + keywords.join(', ') + '\n' +
+    '생성 수량: ' + total + '개\n\n' +
+    '규칙:\n' +
+    '1. 키워드를 반드시 포함할 것\n' +
+    '2. 아래 패턴을 골고루 섞어서 사용:\n' +
+    '   - 숫자형: TOP5, 3가지, 7일 만에\n' +
+    '   - 반전형: 알고 보니, 착각이었다, 틀렸습니다\n' +
+    '   - 경고형: 지금 당장, 방치하면, 놓치면 손해\n' +
+    '   - 비밀형: 아무도 안 알려주는, 전문가만 아는\n' +
+    '   - 공감형: 저도 몰랐는데, 혼자가 아닙니다\n' +
+    '   - 통계형: 90%가 모르는, 대부분이 놓치는\n' +
+    '3. 자극적이고 궁금증을 유발하는 제목\n' +
+    '4. 번호 없이 제목만 한 줄씩 출력\n' +
+    '5. 설명, 주석, 빈 줄 없이 제목만 출력\n\n' +
+    '지금 바로 ' + total + '개 출력하세요.';
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var text = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var lines = text.split('\n').map(function(l){ return l.trim().replace(/^\d+\.\s*/, ''); }).filter(Boolean);
+
+    if (!lines.length) throw new Error('결과 없음');
+
+    var prefixStyle = getPrefixStyle();
+    _circleIdx = Math.floor(Math.random() * ALL_CIRCLES.length);
+    _parenIdx  = Math.floor(Math.random() * 50) + 1;
+    _dotIdx    = Math.floor(Math.random() * 99) + 1;
+
+    results = lines.slice(0, total).map(function(title) {
+      return {
+        display: nextPrefix(prefixStyle) + title,
+        kw: keywords[0],
+        pattern: topicLabel,
+        type: currentTopic
+      };
+    });
+
+    if (HAS_LICENSE || IS_ADMIN) addUsage(results.length);
+    else addSampleUsage('normal', results.length);
+    updateUsageBadge();
+    render();
+
+  } catch(e) {
+    document.getElementById('resultArea').innerHTML =
+      '<div class="empty-state"><div class="icon">⚠️</div>생성 실패: ' + e.message + '</div>';
+  }
+}
+
+function generate() {
+  // 건강 외 주제는 API 생성
+  if (currentTopic !== 'health') {
+    generateByAPI();
+    return;
+  }
+
+  var raw = document.getElementById('kwInput').value.trim();
+  if (!raw) { alert('키워드를 입력해주세요!'); return; }
+
+  var keywords = raw.split(/[,，、]/).map(function(k){ return k.trim(); }).filter(Boolean).slice(0, 5);
+  if (!keywords.length) return;
+
+  var activePats = PATTERNS.filter(function(p){ return activePatterns.has(p.id); });
+  if (!activePats.length) { alert('패턴을 하나 이상 선택해주세요!'); return; }
+
+  var total = parseInt(document.getElementById('countSel').value);
+  if (HAS_LICENSE || IS_ADMIN) {
+    if (!checkQuota(total)) return;
+  } else {
+    var allowed = checkSample('normal', total);
+    if (allowed === false) return;
+    total = allowed;
+  }
+  var prefixStyle = getPrefixStyle();
+
+  // 키워드당 균등 배분
+  var perKw = Math.ceil(total / keywords.length);
+  var pool = [];
+
+  keywords.forEach(function(kw) {
+    var kwType = detectKwType(kw);
+    var bucket = [];
+
+    if (kwType === 'medical') {
+      // medical 타입: MEDICAL_TEMPLATES 풀에서 생성
+      var shuffledMed = MEDICAL_TEMPLATES.slice().sort(function(){ return Math.random()-0.5; });
+      for (var mi = 0; bucket.length < perKw * 2 && mi < shuffledMed.length * 3; mi++) {
+        var mfn = shuffledMed[mi % shuffledMed.length];
+        var mtitle = mfn(kw);
+        if (!bucket.some(function(b){ return b.title === mtitle; })) {
+          bucket.push({ title: mtitle, kw: kw, pattern: '실용 정보형', type: kwType });
+        }
+      }
+    } else {
+      // disease / food / general: 기존 PATTERNS 사용
+      var shuffledPats = activePats.slice().sort(function(){ return Math.random()-0.5; });
+      for (var attempt = 0; bucket.length < perKw * 3 && attempt < 200; attempt++) {
+        var pat = shuffledPats[attempt % shuffledPats.length];
+        var fn = pat.fns[Math.floor(Math.random() * pat.fns.length)];
+        var title = fn(kw, kwType);
+        if (!bucket.some(function(b){ return b.title === title; })) {
+          bucket.push({ title: title, kw: kw, pattern: pat.name, type: kwType });
+        }
+      }
+    }
+    // 중복 제거 후 필요 수량만큼
+    var deduped = bucket.filter(function(item){
+      return !usedTitles.has(item.title);
+    }).slice(0, perKw);
+    pool = pool.concat(deduped);
+  });
+
+  // 인터리브 (키워드 교차)
+  var interleaved = [];
+  var buckets = keywords.map(function(kw) {
+    return pool.filter(function(item){ return item.kw === kw; });
+  });
+  var maxLen = Math.max.apply(null, buckets.map(function(b){ return b.length; }));
+  for (var i = 0; i < maxLen; i++) {
+    buckets.forEach(function(b) {
+      if (b[i]) interleaved.push(b[i]);
+    });
+  }
+
+  // 중복 본문 제거
+  var seen = new Set();
+  var final = interleaved.filter(function(item) {
+    var body = item.title.replace(/[①-㊿]|\d+\.\s*/g,'').trim();
+    if (seen.has(body)) return false;
+    seen.add(body);
+    usedTitles.add(item.title);
+    return true;
+  }).slice(0, total);
+
+  // 번호 부여
+  _circleIdx = Math.floor(Math.random() * ALL_CIRCLES.length);
+  _parenIdx  = Math.floor(Math.random() * 50) + 1;
+  _dotIdx    = Math.floor(Math.random() * 99) + 1;
+
+  results = final.map(function(item, idx) {
+    var prefix = nextPrefix(prefixStyle);
+    return {
+      display: prefix + item.title,
+      kw: item.kw,
+      pattern: item.pattern,
+      type: item.type
+    };
+  });
+
+  if (HAS_LICENSE || IS_ADMIN) addUsage(results.length);
+  else addSampleUsage('normal', results.length);
+  updateUsageBadge();
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// 렌더
+// ═══════════════════════════════════════════════════════
+function render() {
+  var area = document.getElementById('resultArea');
+  if (!results.length) {
+    area.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div>생성된 결과가 없습니다</div>';
+    return;
+  }
+
+  var html = '<div class="result-header">'
+    + '<span class="result-count">총 ' + results.length + '개 생성됨</span>'
+    + '<button class="btn-clear" onclick="clearResults()">초기화</button>'
+    + '</div>'
+    + '<div class="results-wrap">';
+
+  results.forEach(function(item, idx) {
+      var typeLabel = item.type === 'disease' ? '🏥 질병/질환' : item.type === 'food' ? '🌿 음식/건기식' : item.type === 'medical' ? '💊 치료/보험/비용' : item.type === 'tech' ? '💻 재테크/IT' : item.type === 'lifestyle' ? '✨ 라이프스타일' : item.type === 'relationship' ? '💬 심리/인간관계' : item.type === 'recipe' ? '🍳 요리/식품' : item.type === 'free' ? '✏️ ' + getFreeCtx() : '💬 일반';
+      var typeColor = item.type === 'disease' ? 'rgba(91,156,246,0.12);color:#5b9cf6' : item.type === 'food' ? 'rgba(52,211,153,0.1);color:#34d399' : item.type === 'medical' ? 'rgba(167,139,250,0.15);color:#a78bfa' : 'rgba(167,139,250,0.12);color:#a78bfa';
+      html += '<div class="result-card" style="animation-delay:'+(idx*0.025)+'s">'
+        + '<div class="card-num">'+(idx+1)+'</div>'
+        + '<div class="card-body">'
+          + '<div class="card-title">' + escHtml(item.display) + '</div>'
+
+        + '</div>'
+        + '<button class="btn-copy" onclick="copyItem(this, '+idx+')">복사</button>'
+        + '</div>';
+  });
+
+  html += '</div>';
+
+  // 비라이선스: 샘플 남은 수 + 구매 안내
+  if (!IS_ADMIN && !HAS_LICENSE) {
+    var rem = getSampleRemaining('normal');
+    html += '<div style="text-align:center;padding:16px 0 4px;font-size:13px;color:var(--text-muted);">';
+    if (rem <= 0) {
+      html += '무료 체험 3개를 모두 사용했습니다 🎉<br>';
+      html += '<button onclick="showPurchaseModal(\'normal\')" style="margin-top:10px;background:linear-gradient(135deg,var(--accent),#2563eb);border:none;border-radius:8px;padding:10px 24px;color:#fff;font-size:14px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer;">🔓 구매하고 계속 사용하기</button>';
+    } else {
+      html += '무료 체험 남은 횟수: <strong style="color:var(--accent);">' + rem + '개</strong>';
+    }
+    html += '</div>';
+  }
+
+  area.innerHTML = html;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+}
+
+function copyItem(btn, idx) {
+  var text = results[idx].display;
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '✓ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function clearResults() {
+  results = [];
+  usedTitles.clear();
+  document.getElementById('resultArea').innerHTML = '<div class="empty-state"><div class="icon">✏️</div>키워드를 입력하고<br>생성 버튼을 눌러보세요</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+// 모드 전환
+
+// ═══════════════════════════════════════════════════════
+// 주제 선택
+// ═══════════════════════════════════════════════════════
+var currentTopic = 'health';
+
+document.querySelectorAll('#topicRow .prefix-chip').forEach(function(chip) {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('#topicRow .prefix-chip').forEach(function(c){ c.classList.remove('active'); });
+    chip.classList.add('active');
+    currentTopic = chip.dataset.topic;
+    var freeWrap = document.getElementById('freeTopicWrap');
+    if (freeWrap) freeWrap.style.display = currentTopic === 'free' ? '' : 'none';
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+var currentMode = 'normal';
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('panelNormal').style.display  = mode === 'normal'  ? '' : 'none';
+  document.getElementById('panelBulk').style.display    = mode === 'bulk'    ? '' : 'none';
+  document.getElementById('panelRewrite').style.display = mode === 'rewrite' ? '' : 'none';
+  document.getElementById('resultArea').style.display   = mode === 'rewrite' ? 'none' : '';
+  document.getElementById('tabNormal').classList.toggle('active',  mode === 'normal');
+  document.getElementById('tabBulk').classList.toggle('active',    mode === 'bulk');
+  document.getElementById('tabRewrite').classList.toggle('active', mode === 'rewrite');
+}
+
+// ═══════════════════════════════════════════════════════
+// 대량 모드: 키워드 파싱
+// ═══════════════════════════════════════════════════════
+var bulkKeywords = [];
+
+function parseBulkText(text) {
+  return text.split(/[\n\r,，]+/)
+    .map(function(k){ return k.trim(); })
+    .filter(function(k){ return k.length > 0; });
+}
+
+function updatePreview() {
+  var kws = parseBulkText(document.getElementById('bulkText').value);
+  bulkKeywords = kws;
+  var el = document.getElementById('kwPreview');
+  if (!kws.length) { el.innerHTML = '키워드를 입력하면 미리보기가 표시됩니다'; return; }
+  var perKw = parseInt(document.getElementById('perKwInput').value) || 5;
+  el.innerHTML = '<span>' + kws.length + '개</span> 키워드 → 총 <span>' + (kws.length * perKw) + '개</span> 제목 생성 예정';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('bulkText').addEventListener('input', updatePreview);
+  document.getElementById('perKwInput').addEventListener('input', updatePreview);
+});
+
+// ── CSV / Excel 업로드 ────────────────────────────────
+var uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', function(e){ e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', function(){ uploadZone.classList.remove('dragover'); });
+uploadZone.addEventListener('drop', function(e){
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById('fileInput').addEventListener('change', function(e){
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  var name = file.name.toLowerCase();
+  var reader = new FileReader();
+
+  if (name.endsWith('.csv')) {
+    reader.onload = function(e) {
+      var lines = e.target.result.split(/[\r\n]+/);
+      var kws = lines.map(function(l){ return l.split(',')[0].trim(); }).filter(Boolean);
+      // 첫 줄이 헤더('키워드','keyword' 등)면 제거
+      if (kws.length && /^(키워드|keyword|kw|제목|title)$/i.test(kws[0])) kws.shift();
+      document.getElementById('bulkText').value = kws.join('\n');
+      updatePreview();
+      uploadZone.querySelector('input').value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+
+  } else {
+    // xlsx/xls: SheetJS 사용
+    reader.onload = function(e) {
+      try {
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1});
+        var kws = [];
+        rows.forEach(function(row){
+          var v = (row[0] || '').toString().trim();
+          if (v && !/^(키워드|keyword|kw|제목|title)$/i.test(v)) kws.push(v);
+        });
+        document.getElementById('bulkText').value = kws.join('\n');
+        updatePreview();
+      } catch(e2) {
+        alert('파일 읽기 오류: ' + e2.message);
+      }
+      uploadZone.querySelector('input').value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// 대량 생성
+// ═══════════════════════════════════════════════════════
+var bulkResults = [];
+
+function generateBulk() {
+  var kws = parseBulkText(document.getElementById('bulkText').value);
+  if (!kws.length) { alert('키워드를 입력해주세요!'); return; }
+
+  var activePats = PATTERNS.filter(function(p){ return activePatterns.has(p.id); });
+  if (!activePats.length) { alert('일반 모드에서 패턴을 하나 이상 선택해주세요!'); return; }
+
+  var perKw  = Math.max(1, parseInt(document.getElementById('perKwInput').value) || 5);
+  var style  = document.getElementById('bulkPrefixSel').value;
+
+  // 무료 사용자: 총 3개까지만 허용
+  if (!IS_ADMIN && !HAS_LICENSE) {
+    var rem = getSampleRemaining('bulk');
+    if (rem <= 0) { showPurchaseModal('bulk'); return; }
+    // 키워드 수 × perKw 가 rem 이하가 되도록 perKw 조정
+    perKw = Math.max(1, Math.floor(rem / Math.max(1, kws.length)));
+    kws = kws.slice(0, rem); // 키워드도 rem개 초과 안 되게
+  }
+
+  // 번호 초기화
+  _circleIdx = 0; _parenIdx = 1; _dotIdx = 1;
+
+  var progressWrap = document.getElementById('progressWrap');
+  var progressBar  = document.getElementById('progressBar');
+  progressWrap.style.display = 'block';
+
+  bulkResults = [];
+  var usedLocal = new Set();
+  var globalIdx = 0;
+
+  // 청크 처리 (UI 블로킹 방지)
+  var CHUNK = 50;
+  var kwIdx = 0;
+
+  function processChunk() {
+    var end = Math.min(kwIdx + CHUNK, kws.length);
+    for (var i = kwIdx; i < end; i++) {
+      var kw = kws[i];
+      var kwType = detectKwType(kw);
+      var bucket = [];
+
+      if (kwType === 'medical') {
+        var shuffled = MEDICAL_TEMPLATES.slice().sort(function(){ return Math.random()-0.5; });
+        for (var mi = 0; bucket.length < perKw && mi < shuffled.length * 3; mi++) {
+          var t = shuffled[mi % shuffled.length](kw);
+          if (!usedLocal.has(kw + '|' + t)) { bucket.push(t); usedLocal.add(kw + '|' + t); }
+        }
+      } else {
+        var shuffledP = activePats.slice().sort(function(){ return Math.random()-0.5; });
+        for (var att = 0; bucket.length < perKw && att < 300; att++) {
+          var pat = shuffledP[att % shuffledP.length];
+          var fn  = pat.fns[Math.floor(Math.random() * pat.fns.length)];
+          var t   = fn(kw, kwType);
+          if (!usedLocal.has(kw + '|' + t)) { bucket.push(t); usedLocal.add(kw + '|' + t); }
+        }
+      }
+
+      bucket.slice(0, perKw).forEach(function(title) {
+        globalIdx++;
+        var prefix = '';
+        if (style === 'circle') { prefix = ALL_CIRCLES[(globalIdx-1) % ALL_CIRCLES.length] + ' '; }
+        else if (style === 'dot') { prefix = globalIdx + '. '; }
+        bulkResults.push({ num: globalIdx, kw: kw, title: prefix + title, type: kwType });
+      });
+    }
+    kwIdx = end;
+    progressBar.style.width = Math.round(kwIdx / kws.length * 100) + '%';
+
+    if (kwIdx < kws.length) {
+      setTimeout(processChunk, 0);
+    } else {
+      progressWrap.style.display = 'none';
+      progressBar.style.width = '0%';
+      if (HAS_LICENSE || IS_ADMIN) addUsage(bulkResults.length);
+      else addSampleUsage('bulk', bulkResults.length);
+      updateUsageBadge();
+      renderBulk();
+      document.getElementById('btnDl').disabled = false;
+    }
+  }
+
+  document.getElementById('btnDl').disabled = true;
+  processChunk();
+}
+
+// ── 결과 렌더 ────────────────────────────────────────
+function renderBulk() {
+  var area = document.getElementById('resultArea');
+  if (!bulkResults.length) { area.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div>결과 없음</div>'; return; }
+
+  var html = '<div class="result-header">'
+    + '<span class="result-count">총 ' + bulkResults.length + '개 생성됨</span>'
+    + '<button class="btn-copy-all" onclick="copyAll()">전체 복사</button>'
+    + '</div><div class="results-wrap">';
+
+  var MAX_DISPLAY = 300;
+  var display = bulkResults.slice(0, MAX_DISPLAY);
+  display.forEach(function(item, idx){
+    html += '<div class="result-card">'
+      + '<div class="card-num">' + item.num + '</div>'
+      + '<div class="card-body"><div class="card-title">' + escHtml(item.title) + '</div></div>'
+      + '<button class="btn-copy" onclick="copyBulkItem(this,' + idx + ')">복사</button>'
+      + '</div>';
+  });
+
+  if (bulkResults.length > MAX_DISPLAY) {
+    html += '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px;">'
+      + '화면에는 ' + MAX_DISPLAY + '개만 표시 · 전체 ' + bulkResults.length + '개는 엑셀 다운로드로 확인하세요</div>';
+  }
+
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function copyBulkItem(btn, idx) {
+  navigator.clipboard.writeText(bulkResults[idx].title).then(function(){
+    btn.textContent = '✓'; setTimeout(function(){ btn.textContent = '복사'; }, 1200);
+  });
+}
+
+function copyAll() {
+  var text = bulkResults.map(function(r){ return r.title; }).join('\n');
+  navigator.clipboard.writeText(text).then(function(){
+    var btn = event.target;
+    btn.textContent = '✓ 복사됨';
+    setTimeout(function(){ btn.textContent = '전체 복사'; }, 1500);
+  });
+}
+
+// ── xlsx 다운로드 ─────────────────────────────────────
+function downloadXlsx() {
+  if (!bulkResults.length) return;
+  var rows = [['번호','키워드','제목','타입']];
+  bulkResults.forEach(function(r){
+    var tLabel = r.type==='disease'?'질병/질환':r.type==='food'?'음식/건기식':r.type==='medical'?'치료/보험/비용':'일반';
+    rows.push([r.num, r.kw, r.title, tLabel]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:60},{wch:14}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '바이럴제목');
+  XLSX.writeFile(wb, '바이럴제목_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+// ═══════════════════════════════════════════════════════
+// 제목 변환 모드
+// ═══════════════════════════════════════════════════════
+var rewriteResults = [];   // [{orig, rewritten}]
+var rewriteStopped = false;
+
+// 입력 카운트 실시간 업데이트
+document.getElementById('rewriteInput').addEventListener('input', function() {
+  var lines = this.value.split('\n').filter(function(l){ return l.trim(); });
+  document.getElementById('rewriteCount').textContent = lines.length + '개 제목 입력됨';
+});
+
+function stopRewrite() {
+  rewriteStopped = true;
+  document.getElementById('btnRewriteStop').style.display = 'none';
+  document.getElementById('btnRewrite').disabled = false;
+  document.getElementById('rewriteStatus').textContent = '⏹ 중단됨';
+}
+
+async function startRewrite() {
+  var raw = document.getElementById('rewriteInput').value.trim();
+  if (!raw) { alert('변환할 제목을 입력해주세요.'); return; }
+
+  var titles = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  if (!titles.length) { alert('변환할 제목이 없습니다.'); return; }
+
+  // 무료 사용자: 남은 샘플 수만큼만 허용
+  if (!IS_ADMIN && !HAS_LICENSE) {
+    var rem = getSampleRemaining('rewrite');
+    if (rem <= 0) { showPurchaseModal('rewrite'); return; }
+    titles = titles.slice(0, rem);
+  }
+
+  // UI 초기화
+  rewriteResults = [];
+  rewriteStopped = false;
+  document.getElementById('btnRewrite').disabled = true;
+  document.getElementById('btnRewriteStop').style.display = '';
+  document.getElementById('rewriteProgressWrap').style.display = '';
+  document.getElementById('rewriteProgressBar').style.width = '0%';
+  document.getElementById('rewriteResultArea').style.display = '';
+  document.getElementById('rewriteResultCount').textContent = '변환 중...';
+  document.getElementById('rewriteTable').innerHTML = '';
+
+  var BATCH = 20; // 한 번에 처리할 제목 수
+  var total = titles.length;
+
+  for (var i = 0; i < total; i += BATCH) {
+    if (rewriteStopped) break;
+
+    var batch = titles.slice(i, i + BATCH);
+    var batchNum = Math.floor(i / BATCH) + 1;
+    document.getElementById('rewriteStatus').textContent =
+      (i + 1) + '~' + Math.min(i + BATCH, total) + '번 변환 중... (' + batchNum + '/' + Math.ceil(total / BATCH) + ' 배치)';
+
+    try {
+      var converted = await rewriteBatch(batch, i);
+      for (var j = 0; j < converted.length; j++) {
+        rewriteResults.push({ orig: batch[j], rewritten: converted[j] });
+        renderRewriteRow(rewriteResults.length - 1, batch[j], converted[j]);
+      }
+      if (HAS_LICENSE || IS_ADMIN) addUsage(converted.length);
+      else addSampleUsage('rewrite', converted.length);
+      updateUsageBadge();
+    } catch(e) {
+      // 오류 시 원본 유지
+      for (var j = 0; j < batch.length; j++) {
+        rewriteResults.push({ orig: batch[j], rewritten: '[변환 오류] ' + batch[j] });
+        renderRewriteRow(rewriteResults.length - 1, batch[j], '[변환 오류] ' + batch[j]);
+      }
+    }
+
+    var done = Math.min(i + BATCH, total);
+    document.getElementById('rewriteProgressBar').style.width = (done / total * 100) + '%';
+    document.getElementById('rewriteResultCount').textContent =
+      done + ' / ' + total + '개 완료';
+  }
+
+  document.getElementById('btnRewrite').disabled = false;
+  document.getElementById('btnRewriteStop').style.display = 'none';
+  document.getElementById('rewriteStatus').textContent =
+    rewriteStopped ? '⏹ 중단됨 (' + rewriteResults.length + '개 완료)' :
+    '✅ 전체 변환 완료 — ' + rewriteResults.length + '개';
+  document.getElementById('rewriteResultCount').textContent =
+    rewriteResults.length + '개 변환 완료';
+}
+
+async function rewriteBatch(titles, startIdx) {
+  var numbered = titles.map(function(t, i){
+    return (startIdx + i + 1) + '. ' + t;
+  }).join('\n');
+
+  var prompt =
+    '아래 한국어 건강 블로그 제목들을 순서대로 새롭게 만들어주세요.\n\n' +
+    '규칙:\n' +
+    '1. 핵심 키워드(병명, 식품명, 수치명 등)는 반드시 유지\n' +
+    '2. 원본과 비슷한 느낌이 나면 안 됩니다 — 완전히 다른 문장이어야 함\n' +
+    '3. 소재·상황·주어를 바꾸세요: "아침 공복"→"자기 전", "의사가 극찬"→"전문가들이 경고", "먹으면 사라진다"→"피해야 하는 이유" 등\n' +
+    '4. 클릭 유도 패턴을 다양하게 섞으세요:\n' +
+    '   - 의외의 사실 ("알고 보니 이게 진짜 원인이었습니다")\n' +
+    '   - 경고형 ("지금 당장 확인하세요")\n' +
+    '   - 공감형 ("저도 처음엔 몰랐습니다")\n' +
+    '   - 숫자 강조 ("3일 만에", "90%가 모르는")\n' +
+    '   - 반전형 ("건강식인 줄 알았는데..")\n' +
+    '5. TOP5·5가지 같은 숫자 포맷은 유지해도 되고 바꿔도 됩니다\n' +
+    '6. 자연스러운 한국어로, 블로그 제목답게\n' +
+    '7. 반드시 번호. 제목 형식으로만 출력 (설명·주석 없음)\n\n' +
+    '제목 목록:\n' + numbered + '\n\n' +
+    '위 ' + titles.length + '개를 순서대로 새롭게 만들어서 번호. 제목 형식으로만 출력하세요.';
+
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  var data = await resp.json();
+  var text = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+
+  // 번호. 제목 파싱
+  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var parsed = [];
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^\d+\.\s+(.+)/);
+    if (m) parsed.push(m[1].trim());
+  }
+
+  // 개수가 맞지 않으면 원본으로 채움
+  while (parsed.length < titles.length) parsed.push(titles[parsed.length]);
+  return parsed.slice(0, titles.length);
+}
+
+function renderRewriteRow(idx, orig, rewritten) {
+  var table = document.getElementById('rewriteTable');
+  var dup = isDuplicate(rewritten);
+  var dupBadge = dup
+    ? '<span style="background:#7c3f00;color:#f5a623;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle;">중복</span>'
+    : '';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:32px 1fr 1fr auto;gap:8px;align-items:start;padding:10px 0;border-bottom:1px solid var(--border);' + (dup ? 'background:rgba(124,63,0,0.08);border-radius:6px;padding-left:6px;padding-right:6px;' : '');
+  row.innerHTML =
+    '<div style="font-size:11px;color:var(--text-muted);padding-top:2px;text-align:center;">' + (idx+1) + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;word-break:keep-all;">' + escHtml(orig) + '</div>' +
+    '<div style="font-size:13px;color:' + (dup ? '#f5a623' : 'var(--text)') + ';line-height:1.5;word-break:keep-all;font-weight:500;" id="rw-text-'+idx+'">' + escHtml(rewritten) + dupBadge + '</div>' +
+    '<button onclick="copyRewriteRow('+idx+')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text-muted);font-size:11px;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer;white-space:nowrap;" id="rw-btn-'+idx+'">복사</button>';
+  table.appendChild(row);
+
+  // 헤더가 없으면 추가
+  if (idx === 0) {
+    var header = document.createElement('div');
+    header.style.cssText = 'display:grid;grid-template-columns:32px 1fr 1fr auto;gap:8px;padding:6px 0 8px;border-bottom:2px solid var(--border);margin-bottom:2px;';
+    header.innerHTML =
+      '<div></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);font-weight:700;letter-spacing:0.5px;">원본</div>' +
+      '<div style="font-size:11px;color:#9ba8c0;font-weight:700;letter-spacing:0.5px;">변환 결과</div>' +
+      '<div></div>';
+    table.insertBefore(header, table.firstChild);
+  }
+}
+
+function copyRewriteRow(idx) {
+  var text = document.getElementById('rw-text-'+idx).textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn = document.getElementById('rw-btn-'+idx);
+    var orig = btn.textContent;
+    btn.textContent = '✓ 복사됨';
+    btn.style.color = 'var(--accent3)';
+    setTimeout(function(){ btn.textContent = orig; btn.style.color = ''; }, 1500);
+  });
+}
+
+function copyAllRewrite() {
+  var text = rewriteResults.map(function(r){ return r.rewritten; }).join('\n');
+  navigator.clipboard.writeText(text).then(function(){
+    var btn = document.getElementById('btnCopyAll');
+    btn.textContent = '✓ 복사됨';
+    setTimeout(function(){ btn.textContent = '전체 복사'; }, 1800);
+  });
+}
+
+function downloadRewriteXlsx() {
+  if (!rewriteResults.length) return;
+  var ws_data = [['번호', '원본 제목', '변환 제목']];
+  rewriteResults.forEach(function(r, i){
+    ws_data.push([i+1, r.orig, r.rewritten]);
+  });
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = [{wch:6},{wch:60},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, '제목변환');
+  XLSX.writeFile(wb, '제목변환_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════════
+// 사용 이력 DB (localStorage)
+// ═══════════════════════════════════════════════════════
+var USED_DB_KEY = 'viralTitleUsedDB';
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(USED_DB_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveDB(arr) {
+  localStorage.setItem(USED_DB_KEY, JSON.stringify(arr));
+  updateDBCount();
+}
+function normalizeTitle(s) {
+  return String(s).trim().replace(/\s+/g, ' ');
+}
+function updateDBCount() {
+  var db = loadDB();
+  var el = document.getElementById('dbCount');
+  if (el) el.textContent = db.length.toLocaleString() + '개 저장됨';
+}
+function isDuplicate(title) {
+  var db = loadDB();
+  var norm = normalizeTitle(title);
+  return db.indexOf(norm) !== -1;
+}
+
+// 변환 결과 전체를 DB에 등록
+function addResultsToDB() {
+  if (!rewriteResults.length) return;
+  var db = loadDB();
+  var dbSet = new Set(db);
+  var added = 0;
+  rewriteResults.forEach(function(r) {
+    var norm = normalizeTitle(r.rewritten);
+    if (norm && !dbSet.has(norm)) { dbSet.add(norm); added++; }
+  });
+  var newDB = Array.from(dbSet);
+  saveDB(newDB);
+  var btn = document.getElementById('btnAddToDB');
+  if (btn) {
+    btn.textContent = '✓ ' + added + '개 등록 완료';
+    btn.style.color = 'var(--accent3)';
+    setTimeout(function() {
+      btn.textContent = '✚ 사용 이력에 등록';
+    }, 2000);
+  }
+}
+
+// 엑셀 파일로 DB 불러오기
+function importDBFile() {
+  document.getElementById('dbFileInput').click();
+}
+// 파일 읽은 뒤 열 선택 모달 표시
+var _dbFileRows = [];
+function handleDBFile(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+
+  // txt 파일: 줄바꿈으로 분리해서 바로 DB 등록
+  if (file.name.match(/\.txt$/i)) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var lines = e.target.result.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+      var db = loadDB();
+      var dbSet = new Set(db);
+      var added = 0;
+      lines.forEach(function(line) {
+        var norm = normalizeTitle(line);
+        if (norm && norm.length > 3 && !dbSet.has(norm)) { dbSet.add(norm); added++; }
+      });
+      saveDB(Array.from(dbSet));
+      alert(added + '개 제목이 이력 DB에 추가됐습니다.\n총 ' + loadDB().length + '개 저장됨');
+    };
+    reader.readAsText(file, 'utf-8');
+    evt.target.value = '';
+    return;
+  }
+
+  // 엑셀/CSV: 열 선택 모달
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, {type:'binary'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      _dbFileRows = XLSX.utils.sheet_to_json(ws, {header:1});
+      showColPickerModal(_dbFileRows);
+    } catch(err) { alert('파일 읽기 오류: ' + err.message); }
+  };
+  reader.readAsBinaryString(file);
+  evt.target.value = '';
+}
+
+function showColPickerModal(rows) {
+  // 헤더 행 또는 첫 행으로 열 목록 파악
+  var firstRow = rows[0] || [];
+  var colCount = 0;
+  rows.slice(0, 5).forEach(function(r){ if (r.length > colCount) colCount = r.length; });
+
+  // 열 버튼 목록 생성 (A~Z)
+  var colBtns = '';
+  for (var i = 0; i < colCount; i++) {
+    var colLetter = String.fromCharCode(65 + i);
+    var preview = String(firstRow[i] || '').slice(0, 14);
+    colBtns += '<button onclick="applyDBCol(' + i + ')" style="' +
+      'background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;' +
+      'padding:10px 14px;color:var(--text);font-size:12px;font-family:sans-serif;' +
+      'cursor:pointer;text-align:left;transition:border-color 0.15s;min-width:90px;"' +
+      ' onmouseover="this.style.borderColor=&apos;var(--accent)&apos;" onmouseout="this.style.borderColor=&apos;var(--border)&apos;">' +
+      '<div style="font-weight:700;font-size:13px;color:var(--accent);">' + colLetter + '열</div>' +
+      '<div style="color:#9ba8c0;font-size:11px;margin-top:3px;">' + escHtml(preview) + (preview.length >= 14 ? '..' : '') + '</div>' +
+      '</button>';
+  }
+
+  // 미리보기 (처음 3행)
+  var previewHtml = '<div style="margin-top:14px;font-size:11px;color:#606878;">파일 미리보기 (상위 3행)</div>';
+  previewHtml += '<div style="overflow-x:auto;margin-top:6px;">';
+  previewHtml += '<table style="border-collapse:collapse;font-size:11px;color:#9ba8c0;width:100%;">';
+  rows.slice(0, 3).forEach(function(row) {
+    previewHtml += '<tr>';
+    for (var i = 0; i < colCount; i++) {
+      previewHtml += '<td style="border:1px solid var(--border);padding:4px 8px;max-width:120px;overflow:hidden;white-space:nowrap;">' +
+        escHtml(String(row[i] || '').slice(0,20)) + '</td>';
+    }
+    previewHtml += '</tr>';
+  });
+  previewHtml += '</table></div>';
+
+  var modal = document.createElement('div');
+  modal.id = 'colPickerModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;">' +
+      '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">제목이 있는 열을 선택하세요</div>' +
+      '<div style="font-size:12px;color:#9ba8c0;margin-bottom:16px;">총 ' + rows.length + '행 · ' + colCount + '개 열 감지됨</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + colBtns + '</div>' +
+      previewHtml +
+      '<div style="margin-top:16px;text-align:right;">' +
+        '<button onclick="closeColPicker()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:7px 16px;color:#9ba8c0;font-size:12px;cursor:pointer;">취소</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+function closeColPicker() {
+  var m = document.getElementById('colPickerModal');
+  if (m) m.remove();
+  _dbFileRows = [];
+}
+
+function applyDBCol(colIdx) {
+  var db = loadDB();
+  var dbSet = new Set(db);
+  var added = 0;
+  _dbFileRows.forEach(function(row) {
+    var norm = normalizeTitle(String(row[colIdx] || ''));
+    if (norm && norm.length > 3 && !dbSet.has(norm)) {
+      dbSet.add(norm); added++;
+    }
+  });
+  saveDB(Array.from(dbSet));
+  closeColPicker();
+  alert(added + '개 제목이 이력 DB에 추가됐습니다.\n총 ' + loadDB().length + '개 저장됨');
+}
+
+// DB 엑셀 내보내기
+function exportDB() {
+  var db = loadDB();
+  if (!db.length) { alert('저장된 이력이 없습니다.'); return; }
+  var ws_data = [['번호','사용된 제목']];
+  db.forEach(function(t, i) { ws_data.push([i+1, t]); });
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = [{wch:6},{wch:70}];
+  XLSX.utils.book_append_sheet(wb, ws, '사용이력');
+  XLSX.writeFile(wb, '제목사용이력_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+// DB 전체 삭제
+function clearDB() {
+  if (!confirm('사용 이력 전체를 삭제할까요?')) return;
+  saveDB([]);
+  alert('삭제됐습니다.');
+}
+
+// 페이지 로드 시 카운트 업데이트
+updateDBCount();
+
+
+// ── 자유 주제 헬퍼 ──
+function getFreeCtx() {
+  var el = document.getElementById('freeTopicInput');
+  return (el && el.value.trim()) ? el.value.trim() : '이 주제';
+}
+
+
+// ═══════════════════════════════════════════════════════
+// 라이선스 & 샘플 제한 & 구매 팝업
+// ═══════════════════════════════════════════════════════
+var LICENSE_KEY   = 'viralTitleLicense';
+var SAMPLE_KEY    = 'viralTitleSample';   // 탭별 샘플 사용량
+var IS_ADMIN      = false;
+var LICENSE_LIMIT = 0;   // 0 = 무제한 (라이선스 보유 시)
+var HAS_LICENSE   = false;
+var selectedPlan  = '';
+
+var SAMPLE_LIMIT = 3;  // 탭별 무료 체험 수
+
+// 탭별 샘플 카운트
+function getSampleUsage() {
+  try { return JSON.parse(localStorage.getItem(SAMPLE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function addSampleUsage(mode, n) {
+  var u = getSampleUsage();
+  u[mode] = (u[mode] || 0) + (n || 1);
+  localStorage.setItem(SAMPLE_KEY, JSON.stringify(u));
+}
+function getSampleRemaining(mode) {
+  if (IS_ADMIN || HAS_LICENSE) return Infinity;
+  var u = getSampleUsage();
+  return Math.max(0, SAMPLE_LIMIT - (u[mode] || 0));
+}
+
+// 라이선스 보유 시 사용량
+function getUsage() {
+  try { return parseInt(localStorage.getItem('viralTitleUsage') || '0'); }
+  catch(e) { return 0; }
+}
+function addUsage(n) {
+  if (!HAS_LICENSE && !IS_ADMIN) return;
+  var u = getUsage() + (n || 1);
+  localStorage.setItem('viralTitleUsage', u);
+  updateUsageBadge();
+}
+function updateUsageBadge() {
+  var el = document.getElementById('usageBadge');
+  if (!el) return;
+  if (IS_ADMIN) { el.textContent = '👑 관리자 (무제한)'; el.style.color = 'var(--accent3)'; return; }
+  if (!HAS_LICENSE) {
+    var rem = { normal: getSampleRemaining('normal'), bulk: getSampleRemaining('bulk'), rewrite: getSampleRemaining('rewrite') };
+    el.textContent = '무료 체험 중 · 일반:' + (rem.normal === Infinity ? '∞' : rem.normal) + ' 대량:' + (rem.bulk === Infinity ? '∞' : rem.bulk) + ' 변환:' + (rem.rewrite === Infinity ? '∞' : rem.rewrite);
+    el.style.color = 'var(--text-muted)';
+    return;
+  }
+  var used = getUsage();
+  var remaining = LICENSE_LIMIT - used;
+  el.textContent = '잔여 ' + Math.max(0, remaining).toLocaleString() + ' / ' + LICENSE_LIMIT.toLocaleString() + '개';
+  el.style.color = remaining <= 30 ? '#f87171' : 'var(--text-muted)';
+}
+
+// 쿼터 체크 (라이선스 보유 시)
+function checkQuota(n) {
+  if (IS_ADMIN || LICENSE_LIMIT === 0) return true;
+  if (getUsage() + n > LICENSE_LIMIT) {
+    showPurchaseModal();
+    return false;
+  }
+  return true;
+}
+
+// 샘플 체크 (비라이선스 시)
+function checkSample(mode, n) {
+  if (IS_ADMIN || HAS_LICENSE) return true;
+  var rem = getSampleRemaining(mode);
+  if (rem <= 0) {
+    showPurchaseModal(mode);
+    return false;
+  }
+  // 샘플 범위 내로 n 조정
+  return Math.min(n, rem);
+}
+
+// 구매 팝업
+function showPurchaseModal(mode) {
+  var modal = document.getElementById('purchaseModal');
+  modal.style.display = 'flex';
+  if (mode) selectPlan(mode);
+}
+function closePurchaseModal() {
+  document.getElementById('purchaseModal').style.display = 'none';
+}
+function selectPlan(plan) {
+  selectedPlan = plan;
+  ['normal','bulk','rewrite'].forEach(function(p){
+    var el = document.getElementById('plan-' + p);
+    if (!el) return;
+    el.style.borderColor = p === plan ? 'var(--accent)' : 'var(--border)';
+    el.style.background  = p === plan ? 'rgba(91,156,246,0.08)' : '';
+  });
+}
+function showAdminInput() {
+  var w = document.getElementById('adminInputWrap');
+  if (w) w.style.display = w.style.display === 'none' ? '' : 'none';
+}
+function activateAdmin() {
+  var pw = (document.getElementById('adminPwInput') || {}).value || '';
+  if (pw === CONFIG.ADMIN_PASSWORD) {
+    IS_ADMIN = true;
+    HAS_LICENSE = true;
+    localStorage.setItem(LICENSE_KEY, JSON.stringify({ code: '__admin__', limit: 0 }));
+    closePurchaseModal();
+    updateUsageBadge();
+  } else {
+    alert('비밀번호가 틀렸습니다.');
+  }
+}
+function activateLicense() {
+  var input = (document.getElementById('licenseInput') || {}).value || '';
+  input = input.trim();
+  var errEl = document.getElementById('licenseError');
+  if (errEl) errEl.textContent = '';
+  if (!input) { if (errEl) errEl.textContent = '코드를 입력해주세요.'; return; }
+
+  var found = null;
+  for (var i = 0; i < CONFIG.LICENSE_CODES.length; i++) {
+    if (CONFIG.LICENSE_CODES[i].code === input) { found = CONFIG.LICENSE_CODES[i]; break; }
+  }
+  if (!found) { if (errEl) errEl.textContent = '유효하지 않은 코드입니다.'; return; }
+
+  HAS_LICENSE = true;
+  LICENSE_LIMIT = found.limit;
+  localStorage.setItem(LICENSE_KEY, JSON.stringify({ code: found.code, limit: found.limit }));
+  closePurchaseModal();
+  updateUsageBadge();
+}
+function enterApp() { updateUsageBadge(); }
+
+// 앱 시작 시 기존 라이선스 확인
+(function initLicense() {
+  var info = null;
+  try { info = JSON.parse(localStorage.getItem(LICENSE_KEY) || 'null'); } catch(e){}
+  if (info) {
+    if (info.code === '__admin__') {
+      IS_ADMIN = true; HAS_LICENSE = true; LICENSE_LIMIT = 0;
+    } else {
+      var valid = CONFIG.LICENSE_CODES.some(function(c){ return c.code === info.code; });
+      if (valid) { HAS_LICENSE = true; LICENSE_LIMIT = info.limit; }
+      else { localStorage.removeItem(LICENSE_KEY); }
+    }
+  }
+  updateUsageBadge();
+})();
+
+// 모달 바깥 클릭 시 닫기
+document.addEventListener('click', function(e) {
+  var modal = document.getElementById('purchaseModal');
+  if (modal && e.target === modal) closePurchaseModal();
+});
+
+// ── 테마 토글 ──
+function toggleTheme() {
+  var isLight = document.body.classList.toggle('light');
+  var btn = document.getElementById('themeBtn');
+  btn.textContent = isLight ? '🌙 다크' : '☀️ 라이트';
+  localStorage.setItem('viralTitleTheme', isLight ? 'light' : 'dark');
+}
+// 저장된 테마 복원
+(function(){
+  var saved = localStorage.getItem('viralTitleTheme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    var btn = document.getElementById('themeBtn');
+    if (btn) btn.textContent = '🌙 다크';
+  }
+})();
+
+
+</script>
+</body>
+</html>
